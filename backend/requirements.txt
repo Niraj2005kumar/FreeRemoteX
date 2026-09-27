@@ -6,4 +6,5 @@ passlib[bcrypt]
 python-dotenv
 websockets
 pydantic
-email-validator
+httpx
+python-multipart
