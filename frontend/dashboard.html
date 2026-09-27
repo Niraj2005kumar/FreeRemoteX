@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RemoteX - Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+
+<body>
+
+    <div class="dashboard-container">
+
+        <header class="dashboard-header">
+            <h2>RemoteX</h2>
+            <div class="user-info">
+                <span id="userName"></span>
+                <button id="logoutBtn">Logout</button>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+
+            <!-- My Remote ID -->
+            <div class="card">
+                <h3>Your Remote ID</h3>
+                <div class="remote-id-box" id="myRemoteId">------</div>
+                <p class="hint">Share this ID with others to let them connect with you</p>
+            </div>
+
+            <!-- Connect to someone -->
+            <div class="card">
+                <h3>Connect to Someone</h3>
+                <div class="connect-box">
+                    <input type="text" id="targetRemoteId" placeholder="Enter Remote ID">
+                    <button id="connectBtn">Connect</button>
+                </div>
+                <p id="connectMessage" class="message"></p>
+            </div>
+
+            <!-- Pending Requests -->
+            <div class="card">
+                <h3>Incoming Requests</h3>
+                <div id="pendingRequestsList" class="requests-list">
+                    <p class="empty-text">No pending requests</p>
+                </div>
+            </div>
+
+            <!-- Session History -->
+            <div class="card">
+                <h3>Recent Sessions</h3>
+                <div id="sessionHistoryList" class="requests-list">
+                    <p class="empty-text">No sessions yet</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Incoming request popup -->
+    <div id="incomingPopup" class="popup hidden">
+        <div class="popup-box">
+            <p id="popupText"></p>
+            <div class="popup-actions">
+                <button id="popupAccept" class="accept-btn">Accept</button>
+                <button id="popupReject" class="reject-btn">Reject</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/websocket.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+
+</html>
