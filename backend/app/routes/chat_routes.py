@@ -14,31 +14,15 @@ router = APIRouter(
 )
 
 
-chat_messages_collection = database["chat_messages"]
-
-
-def get_other_user_remote_id(
-    session: dict,
-    current_remote_id: str
-) -> str:
-
-    if session.get("user_a_remote_id") == current_remote_id:
-        return session.get("user_b_remote_id")
-
-    if session.get("user_b_remote_id") == current_remote_id:
-        return session.get("user_a_remote_id")
-
-    raise HTTPException(
-        status_code=403,
-        detail="You are not part of this session"
-    )
+chat_messages_collection = database[
+    "chat_messages"
+]
 
 
 def validate_session(
     session: dict,
     current_remote_id: str
 ):
-
     if not session:
         raise HTTPException(
             status_code=404,
@@ -61,18 +45,69 @@ def validate_session(
         )
 
 
+def get_other_user_remote_id(
+    session: dict,
+    current_remote_id: str
+):
+    if session.get(
+        "user_a_remote_id"
+    ) == current_remote_id:
+
+        return session.get(
+            "user_b_remote_id"
+        )
+
+    if session.get(
+        "user_b_remote_id"
+    ) == current_remote_id:
+
+        return session.get(
+            "user_a_remote_id"
+        )
+
+    raise HTTPException(
+        status_code=403,
+        detail="You are not part of this session"
+    )
+
+
+def validate_chat_permission(
+    session: dict
+):
+    if session.get(
+        "permissions",
+        {}
+    ).get("chat") is not True:
+
+        raise HTTPException(
+            status_code=403,
+            detail="Chat permission not granted"
+        )
+
+
 @router.post("/send")
 async def send_message(
     data: ChatMessageCreate,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(
+        get_current_user
+    )
 ):
+    current_remote_id = current_user[
+        "remote_id"
+    ]
 
-    current_remote_id = current_user["remote_id"]
+    message_text = data.message.strip()
 
-    if not data.message or not data.message.strip():
+    if not message_text:
         raise HTTPException(
             status_code=400,
             detail="Message cannot be empty"
+        )
+
+    if len(message_text) > 5000:
+        raise HTTPException(
+            status_code=400,
+            detail="Message cannot exceed 5000 characters"
         )
 
     session = await sessions_collection.find_one({
@@ -84,66 +119,71 @@ async def send_message(
         current_remote_id
     )
 
-    if session.get(
-        "permissions",
-        {}
-    ).get("chat") is not True:
-
-        raise HTTPException(
-            status_code=403,
-            detail="Chat permission not granted"
-        )
+    validate_chat_permission(
+        session
+    )
 
     other_remote_id = get_other_user_remote_id(
         session,
         current_remote_id
     )
 
+    message_id = str(
+        uuid.uuid4()
+    )
+
+    timestamp = datetime.now(
+        timezone.utc
+    )
+
     message_doc = {
-        "message_id": str(uuid.uuid4()),
+        "message_id": message_id,
         "session_id": data.session_id,
         "from_remote_id": current_remote_id,
         "to_remote_id": other_remote_id,
-        "message": data.message.strip(),
-        "timestamp": datetime.now(timezone.utc)
+        "message": message_text,
+        "timestamp": timestamp
     }
 
     await chat_messages_collection.insert_one(
         message_doc
     )
 
+    websocket_message = {
+        "type": "chat_message",
+        "session_id": data.session_id,
+        "message_id": message_id,
+        "from_remote_id": current_remote_id,
+        "to_remote_id": other_remote_id,
+        "message": message_text,
+        "timestamp": timestamp.isoformat()
+    }
+
     await manager.send_to_user(
         other_remote_id,
-        {
-            "type": "chat_message",
-            "session_id": data.session_id,
-            "message_id": message_doc["message_id"],
-            "from_remote_id": current_remote_id,
-            "to_remote_id": other_remote_id,
-            "message": message_doc["message"],
-            "timestamp": message_doc[
-                "timestamp"
-            ].isoformat()
-        }
+        websocket_message
     )
 
     return {
         "message": "Message sent",
-        "message_id": message_doc["message_id"],
+        "message_id": message_id,
         "session_id": data.session_id,
-        "timestamp": message_doc[
-            "timestamp"
-        ].isoformat()
+        "timestamp": timestamp.isoformat()
     }
 
 
-@router.get("/history/{session_id}")
+@router.get(
+    "/history/{session_id}"
+)
 async def get_chat_history(
     session_id: str,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(
+        get_current_user
+    )
 ):
-
-    current_remote_id = current_user["remote_id"]
+    current_remote_id = current_user[
+        "remote_id"
+    ]
 
     session = await sessions_collection.find_one({
         "session_id": session_id
@@ -154,21 +194,13 @@ async def get_chat_history(
         current_remote_id
     )
 
-    if session.get(
-        "permissions",
-        {}
-    ).get("chat") is not True:
+    validate_chat_permission(
+        session
+    )
 
-        raise HTTPException(
-            status_code=403,
-            detail="Chat permission not granted"
-        )
-
-    cursor = chat_messages_collection.find(
-        {
-            "session_id": session_id
-        }
-    ).sort(
+    cursor = chat_messages_collection.find({
+        "session_id": session_id
+    }).sort(
         "timestamp",
         1
     )
@@ -190,11 +222,11 @@ async def get_chat_history(
             "message": msg.get(
                 "message"
             ),
-            "timestamp": msg.get(
-                "timestamp"
-            ).isoformat()
-            if msg.get("timestamp")
-            else None
+            "timestamp": (
+                msg.get("timestamp").isoformat()
+                if msg.get("timestamp")
+                else None
+            )
         })
 
     return {
@@ -208,10 +240,13 @@ async def get_chat_history(
 )
 async def clear_chat_history(
     session_id: str,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(
+        get_current_user
+    )
 ):
-
-    current_remote_id = current_user["remote_id"]
+    current_remote_id = current_user[
+        "remote_id"
+    ]
 
     session = await sessions_collection.find_one({
         "session_id": session_id
@@ -222,11 +257,30 @@ async def clear_chat_history(
         current_remote_id
     )
 
-    await chat_messages_collection.delete_many({
+    validate_chat_permission(
+        session
+    )
+
+    result = await chat_messages_collection.delete_many({
         "session_id": session_id
     })
 
+    other_remote_id = get_other_user_remote_id(
+        session,
+        current_remote_id
+    )
+
+    await manager.send_to_user(
+        other_remote_id,
+        {
+            "type": "chat_history_cleared",
+            "session_id": session_id,
+            "cleared_by": current_remote_id
+        }
+    )
+
     return {
         "message": "Chat history cleared",
-        "session_id": session_id
+        "session_id": session_id,
+        "deleted_count": result.deleted_count
     }

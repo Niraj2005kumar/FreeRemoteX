@@ -2,6 +2,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.websocket.connection_manager import manager
 from app.services.webrtc_service import check_webrtc_permission
+from app.utils.security import decode_access_token
+from app.database.mongodb import users_collection
 
 
 router = APIRouter(
@@ -9,11 +11,74 @@ router = APIRouter(
 )
 
 
-@router.websocket("/ws/signaling/{remote_id}")
+async def authenticate_websocket(
+    websocket: WebSocket,
+    remote_id: str
+):
+    token = websocket.query_params.get("token")
+
+    if not token:
+        await websocket.close(
+            code=1008,
+            reason="Authentication token is required"
+        )
+        return None
+
+    payload = decode_access_token(token)
+
+    if not payload:
+        await websocket.close(
+            code=1008,
+            reason="Invalid or expired token"
+        )
+        return None
+
+    token_remote_id = payload.get(
+        "remote_id"
+    )
+
+    if not token_remote_id:
+        await websocket.close(
+            code=1008,
+            reason="Invalid token payload"
+        )
+        return None
+
+    if token_remote_id != remote_id:
+        await websocket.close(
+            code=1008,
+            reason="Remote ID does not match token"
+        )
+        return None
+
+    user = await users_collection.find_one({
+        "remote_id": remote_id
+    })
+
+    if not user:
+        await websocket.close(
+            code=1008,
+            reason="User not found"
+        )
+        return None
+
+    return user
+
+
+@router.websocket(
+    "/ws/signaling/{remote_id}"
+)
 async def signaling_endpoint(
     websocket: WebSocket,
     remote_id: str
 ):
+    user = await authenticate_websocket(
+        websocket,
+        remote_id
+    )
+
+    if not user:
+        return
 
     await manager.connect(
         remote_id,
@@ -26,30 +91,47 @@ async def signaling_endpoint(
 
             data = await websocket.receive_json()
 
-            message_type = data.get("type")
-            target_remote_id = data.get("target_remote_id")
-            session_id = data.get("session_id")
-            feature = data.get("feature")
+            message_type = data.get(
+                "type"
+            )
+
+            target_remote_id = data.get(
+                "target_remote_id"
+            )
+
+            session_id = data.get(
+                "session_id"
+            )
+
+            feature = data.get(
+                "feature"
+            )
 
             if not message_type:
+
                 await websocket.send_json({
                     "type": "error",
                     "message": "Message type is required"
                 })
+
                 continue
 
             if not target_remote_id:
+
                 await websocket.send_json({
                     "type": "error",
                     "message": "target_remote_id is required"
                 })
+
                 continue
 
             if not session_id:
+
                 await websocket.send_json({
                     "type": "error",
                     "message": "session_id is required"
                 })
+
                 continue
 
             if message_type in {
@@ -83,9 +165,11 @@ async def signaling_endpoint(
 
                     await websocket.send_json({
                         "type": "permission_denied",
-                        "message": str(e.detail)
-                        if hasattr(e, "detail")
-                        else "WebRTC permission denied"
+                        "message": (
+                            e.detail
+                            if hasattr(e, "detail")
+                            else "WebRTC permission denied"
+                        )
                     })
 
                     continue

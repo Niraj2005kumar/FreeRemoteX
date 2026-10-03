@@ -21,7 +21,12 @@ async def authenticate_agent(
     agent = await desktop_agents_collection.find_one({
         "agent_id": agent_id,
         "token_hash": token_hash,
-        "status": "registered"
+        "status": {
+            "$in": [
+                "registered",
+                "connected"
+            ]
+        }
     })
 
     return agent

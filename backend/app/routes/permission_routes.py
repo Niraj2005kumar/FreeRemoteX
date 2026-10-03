@@ -16,13 +16,6 @@ router = APIRouter(
 )
 
 
-WEBRTC_FEATURES = {
-    "video",
-    "voice",
-    "screen"
-}
-
-
 def get_other_user_remote_id(
     session: dict,
     current_remote_id: str
@@ -60,6 +53,7 @@ async def get_valid_session(
     })
 
     if not session:
+
         raise HTTPException(
             status_code=404,
             detail="Session not found"
@@ -69,18 +63,38 @@ async def get_valid_session(
         session.get("user_a_remote_id"),
         session.get("user_b_remote_id")
     }:
+
         raise HTTPException(
             status_code=403,
             detail="You are not part of this session"
         )
 
-    if session.get("status") != "active":
+    if session.get(
+        "status"
+    ) != "active":
+
         raise HTTPException(
             status_code=400,
             detail="Session is not active"
         )
 
     return session
+
+
+def validate_feature(
+    feature: str
+):
+
+    feature = feature.lower().strip()
+
+    if feature not in VALID_FEATURES:
+
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid feature: {feature}"
+        )
+
+    return feature
 
 
 @router.post("/request")
@@ -95,11 +109,9 @@ async def request_permission(
         "remote_id"
     ]
 
-    if data.feature not in VALID_FEATURES:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid feature name"
-        )
+    feature = validate_feature(
+        data.feature
+    )
 
     session = await get_valid_session(
         data.session_id,
@@ -117,12 +129,12 @@ async def request_permission(
     )
 
     if permissions.get(
-        data.feature
+        feature
     ) is True:
 
         raise HTTPException(
             status_code=400,
-            detail=f"Permission for '{data.feature}' is already granted"
+            detail=f"Permission for '{feature}' is already granted"
         )
 
     permission_requests = session.get(
@@ -131,30 +143,32 @@ async def request_permission(
     )
 
     existing_request = permission_requests.get(
-        data.feature
+        feature
     )
 
-    if (
-        existing_request
-        and existing_request.get("status") == "pending"
-    ):
+    if existing_request and existing_request.get(
+        "status"
+    ) == "pending":
 
         raise HTTPException(
             status_code=400,
-            detail=f"Permission request for '{data.feature}' is already pending"
+            detail=f"Permission request for '{feature}' is already pending"
         )
+
+    request_data = {
+        "status": "pending",
+        "requested_by": current_remote_id,
+        "requested_from": other_remote_id
+    }
 
     await sessions_collection.update_one(
         {
-            "session_id": data.session_id
+            "session_id": data.session_id,
+            "status": "active"
         },
         {
             "$set": {
-                f"permission_requests.{data.feature}": {
-                    "status": "pending",
-                    "requested_by": current_remote_id,
-                    "requested_from": other_remote_id
-                }
+                f"permission_requests.{feature}": request_data
             }
         }
     )
@@ -164,15 +178,15 @@ async def request_permission(
         {
             "type": "permission_request",
             "session_id": data.session_id,
-            "feature": data.feature,
+            "feature": feature,
             "from_remote_id": current_remote_id
         }
     )
 
     return {
-        "message": f"Permission request for '{data.feature}' sent",
+        "message": f"Permission request for '{feature}' sent",
         "session_id": data.session_id,
-        "feature": data.feature,
+        "feature": feature,
         "status": "pending"
     }
 
@@ -189,11 +203,9 @@ async def respond_permission(
         "remote_id"
     ]
 
-    if data.feature not in VALID_FEATURES:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid feature name"
-        )
+    feature = validate_feature(
+        data.feature
+    )
 
     session = await get_valid_session(
         data.session_id,
@@ -206,10 +218,11 @@ async def respond_permission(
     )
 
     request_data = permission_requests.get(
-        data.feature
+        feature
     )
 
     if not request_data:
+
         raise HTTPException(
             status_code=400,
             detail="No permission request found"
@@ -237,23 +250,30 @@ async def respond_permission(
         "requested_by"
     )
 
+    approved = bool(
+        data.approved
+    )
+
+    new_status = (
+        "approved"
+        if approved
+        else "rejected"
+    )
+
     await sessions_collection.update_one(
         {
-            "session_id": data.session_id
+            "session_id": data.session_id,
+            "status": "active",
+            f"permission_requests.{feature}.status": "pending"
         },
         {
             "$set": {
-                f"permissions.{data.feature}":
-                    data.approved,
-                f"permission_requests.{data.feature}": {
-                    "status": (
-                        "approved"
-                        if data.approved
-                        else "rejected"
-                    ),
+                f"permissions.{feature}": approved,
+                f"permission_requests.{feature}": {
+                    "status": new_status,
                     "requested_by": requested_by,
                     "requested_from": current_remote_id,
-                    "approved_by": current_remote_id
+                    "responded_by": current_remote_id
                 }
             }
         }
@@ -264,20 +284,21 @@ async def respond_permission(
         {
             "type": "permission_response",
             "session_id": data.session_id,
-            "feature": data.feature,
-            "approved": data.approved,
+            "feature": feature,
+            "approved": approved,
             "responded_by": current_remote_id
         }
     )
 
     return {
         "message": (
-            f"Permission for '{data.feature}' "
-            f"{'granted' if data.approved else 'denied'}"
+            f"Permission for '{feature}' "
+            f"{'granted' if approved else 'denied'}"
         ),
         "session_id": data.session_id,
-        "feature": data.feature,
-        "approved": data.approved
+        "feature": feature,
+        "approved": approved,
+        "status": new_status
     }
 
 
@@ -293,11 +314,9 @@ async def revoke_permission(
         "remote_id"
     ]
 
-    if data.feature not in VALID_FEATURES:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid feature name"
-        )
+    feature = validate_feature(
+        data.feature
+    )
 
     session = await get_valid_session(
         data.session_id,
@@ -307,11 +326,11 @@ async def revoke_permission(
     if session.get(
         "permissions",
         {}
-    ).get(data.feature) is not True:
+    ).get(feature) is not True:
 
         raise HTTPException(
             status_code=400,
-            detail=f"Permission for '{data.feature}' is not currently granted"
+            detail=f"Permission for '{feature}' is not currently granted"
         )
 
     other_remote_id = get_other_user_remote_id(
@@ -321,13 +340,13 @@ async def revoke_permission(
 
     await sessions_collection.update_one(
         {
-            "session_id": data.session_id
+            "session_id": data.session_id,
+            "status": "active"
         },
         {
             "$set": {
-                f"permissions.{data.feature}":
-                    False,
-                f"permission_requests.{data.feature}": {
+                f"permissions.{feature}": False,
+                f"permission_requests.{feature}": {
                     "status": "revoked",
                     "revoked_by": current_remote_id
                 }
@@ -335,21 +354,29 @@ async def revoke_permission(
         }
     )
 
+    revoke_message = {
+        "type": "permission_revoked",
+        "session_id": data.session_id,
+        "feature": feature,
+        "revoked_by": current_remote_id
+    }
+
     await manager.send_to_user(
         other_remote_id,
-        {
-            "type": "permission_revoked",
-            "session_id": data.session_id,
-            "feature": data.feature,
-            "revoked_by": current_remote_id
-        }
+        revoke_message
+    )
+
+    await manager.send_to_user(
+        current_remote_id,
+        revoke_message
     )
 
     return {
-        "message": f"Permission for '{data.feature}' revoked",
+        "message": f"Permission for '{feature}' revoked",
         "session_id": data.session_id,
-        "feature": data.feature,
-        "approved": False
+        "feature": feature,
+        "approved": False,
+        "status": "revoked"
     }
 
 

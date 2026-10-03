@@ -1,16 +1,28 @@
 from fastapi import APIRouter, Depends, HTTPException
-
 from datetime import datetime, timezone
 
 from app.middleware.auth_middleware import get_current_user
 from app.database.mongodb import sessions_collection
 from app.models.session import SessionCreate, SessionResponse
+from app.websocket.connection_manager import manager
 
 
 router = APIRouter(
     prefix="/session",
     tags=["Session"]
 )
+
+
+DEFAULT_PERMISSIONS = {
+    "video": False,
+    "voice": False,
+    "screen": False,
+    "chat": False,
+    "mouse": False,
+    "keyboard": False,
+    "file_transfer": False,
+    "translation": False
+}
 
 
 def is_session_participant(
@@ -22,6 +34,33 @@ def is_session_participant(
         session.get("user_a_remote_id"),
         session.get("user_b_remote_id")
     }
+
+
+def get_other_user_remote_id(
+    session: dict,
+    current_remote_id: str
+) -> str:
+
+    if session.get(
+        "user_a_remote_id"
+    ) == current_remote_id:
+
+        return session.get(
+            "user_b_remote_id"
+        )
+
+    if session.get(
+        "user_b_remote_id"
+    ) == current_remote_id:
+
+        return session.get(
+            "user_a_remote_id"
+        )
+
+    raise HTTPException(
+        status_code=403,
+        detail="You are not part of this session"
+    )
 
 
 @router.post(
@@ -40,6 +79,7 @@ async def create_session(
     ]
 
     if data.user_b_remote_id == current_remote_id:
+
         raise HTTPException(
             status_code=400,
             detail="You cannot create a session with yourself"
@@ -61,14 +101,17 @@ async def create_session(
     })
 
     if existing_session:
+
         raise HTTPException(
             status_code=400,
             detail="Active session already exists"
         )
 
+    import uuid
+
     session_id = (
         "SES-" +
-        __import__("uuid").uuid4().hex[:12].upper()
+        uuid.uuid4().hex[:12].upper()
     )
 
     created_at = datetime.now(
@@ -80,16 +123,7 @@ async def create_session(
         "user_a_remote_id": current_remote_id,
         "user_b_remote_id": data.user_b_remote_id,
         "status": "active",
-        "permissions": {
-            "video": False,
-            "voice": False,
-            "screen": False,
-            "chat": False,
-            "mouse": False,
-            "keyboard": False,
-            "file_transfer": False,
-            "translation": False
-        },
+        "permissions": DEFAULT_PERMISSIONS.copy(),
         "permission_requests": {},
         "created_at": created_at,
         "ended_at": None
@@ -99,14 +133,24 @@ async def create_session(
         session_doc
     )
 
+    await manager.send_to_user(
+        data.user_b_remote_id,
+        {
+            "type": "session_created",
+            "session_id": session_id,
+            "user_a_remote_id": current_remote_id,
+            "user_b_remote_id": data.user_b_remote_id,
+            "status": "active",
+            "permissions": DEFAULT_PERMISSIONS.copy()
+        }
+    )
+
     return {
         "session_id": session_id,
         "user_a_remote_id": current_remote_id,
         "user_b_remote_id": data.user_b_remote_id,
         "status": "active",
-        "permissions": session_doc[
-            "permissions"
-        ],
+        "permissions": DEFAULT_PERMISSIONS.copy(),
         "created_at": created_at
     }
 
@@ -131,6 +175,7 @@ async def get_session(
     })
 
     if not session:
+
         raise HTTPException(
             status_code=404,
             detail="Session not found"
@@ -140,6 +185,7 @@ async def get_session(
         session,
         current_remote_id
     ):
+
         raise HTTPException(
             status_code=403,
             detail="You are not part of this session"
@@ -160,7 +206,7 @@ async def get_session(
         ),
         "permissions": session.get(
             "permissions",
-            {}
+            DEFAULT_PERMISSIONS.copy()
         ),
         "created_at": session.get(
             "created_at"
@@ -182,12 +228,10 @@ async def get_my_sessions(
     cursor = sessions_collection.find({
         "$or": [
             {
-                "user_a_remote_id":
-                    current_remote_id
+                "user_a_remote_id": current_remote_id
             },
             {
-                "user_b_remote_id":
-                    current_remote_id
+                "user_b_remote_id": current_remote_id
             }
         ]
     }).sort(
@@ -214,7 +258,7 @@ async def get_my_sessions(
             ),
             "permissions": session.get(
                 "permissions",
-                {}
+                DEFAULT_PERMISSIONS.copy()
             ),
             "created_at": session.get(
                 "created_at"
@@ -248,6 +292,7 @@ async def end_session(
     })
 
     if not session:
+
         raise HTTPException(
             status_code=404,
             detail="Session not found"
@@ -257,6 +302,7 @@ async def end_session(
         session,
         current_remote_id
     ):
+
         raise HTTPException(
             status_code=403,
             detail="You are not part of this session"
@@ -268,7 +314,8 @@ async def end_session(
 
         return {
             "message": "Session already ended",
-            "session_id": session_id
+            "session_id": session_id,
+            "status": "ended"
         }
 
     ended_at = datetime.now(
@@ -277,24 +324,41 @@ async def end_session(
 
     await sessions_collection.update_one(
         {
-            "session_id": session_id
+            "session_id": session_id,
+            "status": "active"
         },
         {
             "$set": {
                 "status": "ended",
                 "ended_at": ended_at,
-                "permissions": {
-                    "video": False,
-                    "voice": False,
-                    "screen": False,
-                    "chat": False,
-                    "mouse": False,
-                    "keyboard": False,
-                    "file_transfer": False,
-                    "translation": False
-                }
+                "permissions": DEFAULT_PERMISSIONS.copy(),
+                "permission_requests": {}
             }
         }
+    )
+
+    other_remote_id = get_other_user_remote_id(
+        session,
+        current_remote_id
+    )
+
+    session_ended_message = {
+        "type": "session_ended",
+        "session_id": session_id,
+        "ended_by": current_remote_id,
+        "status": "ended",
+        "permissions": DEFAULT_PERMISSIONS.copy(),
+        "ended_at": ended_at.isoformat()
+    }
+
+    await manager.send_to_user(
+        current_remote_id,
+        session_ended_message
+    )
+
+    await manager.send_to_user(
+        other_remote_id,
+        session_ended_message
     )
 
     return {

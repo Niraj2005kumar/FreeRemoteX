@@ -14,7 +14,6 @@ async def check_control_permission(
     remote_id: str,
     feature: str
 ):
-
     if feature not in CONTROL_FEATURES:
         raise HTTPException(
             status_code=400,
@@ -31,6 +30,12 @@ async def check_control_permission(
             detail="Session not found"
         )
 
+    if session.get("status") != "active":
+        raise HTTPException(
+            status_code=400,
+            detail="Session is not active"
+        )
+
     if remote_id not in {
         session.get("user_a_remote_id"),
         session.get("user_b_remote_id")
@@ -40,18 +45,12 @@ async def check_control_permission(
             detail="You are not part of this session"
         )
 
-    if session.get("status") != "active":
-        raise HTTPException(
-            status_code=400,
-            detail="Session is not active"
-        )
-
-    permissions = session.get(
+    permission = session.get(
         "permissions",
         {}
-    )
+    ).get(feature)
 
-    if permissions.get(feature) is not True:
+    if permission is not True:
         raise HTTPException(
             status_code=403,
             detail=f"Permission for '{feature}' is not approved"
