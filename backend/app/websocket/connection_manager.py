@@ -14,7 +14,21 @@ class ConnectionManager:
     ):
         await websocket.accept()
 
-        self.active_connections[remote_id] = websocket
+        old_connection = self.active_connections.get(
+            remote_id
+        )
+
+        if old_connection:
+            try:
+                await old_connection.close(
+                    code=1000
+                )
+            except Exception:
+                pass
+
+        self.active_connections[
+            remote_id
+        ] = websocket
 
         print(
             f"User {remote_id} connected via WebSocket"
@@ -25,8 +39,9 @@ class ConnectionManager:
         remote_id: str
     ):
         if remote_id in self.active_connections:
-
-            del self.active_connections[remote_id]
+            del self.active_connections[
+                remote_id
+            ]
 
             print(
                 f"User {remote_id} disconnected"
@@ -36,7 +51,6 @@ class ConnectionManager:
         self,
         remote_id: str
     ) -> bool:
-
         return remote_id in self.active_connections
 
     async def send_to_user(
@@ -53,19 +67,21 @@ class ConnectionManager:
             return False
 
         try:
-
-            await websocket.send_json(message)
+            await websocket.send_json(
+                message
+            )
 
             return True
 
         except Exception as e:
 
             print(
-                f"Failed to send message to "
-                f"{remote_id}: {e}"
+                f"Failed to send message to {remote_id}: {e}"
             )
 
-            self.disconnect(remote_id)
+            self.disconnect(
+                remote_id
+            )
 
             return False
 
@@ -93,8 +109,7 @@ class ConnectionManager:
             except Exception as e:
 
                 print(
-                    f"Failed to send message "
-                    f"to {remote_id}: {e}"
+                    f"Failed to send message to {remote_id}: {e}"
                 )
 
                 disconnected_users.append(
@@ -103,7 +118,9 @@ class ConnectionManager:
 
         for remote_id in disconnected_users:
 
-            self.disconnect(remote_id)
+            self.disconnect(
+                remote_id
+            )
 
 
 manager = ConnectionManager()

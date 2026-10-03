@@ -1,18 +1,30 @@
 from motor.motor_asyncio import AsyncIOMotorClient
+
 from app.config import settings
 
-client = AsyncIOMotorClient(settings.MONGO_URI)
-database = client[settings.DATABASE_NAME]
 
-# Collections
+client = AsyncIOMotorClient(
+    settings.MONGO_URI
+)
+
+database = client[
+    settings.DATABASE_NAME
+]
+
+
 users_collection = database["users"]
-sessions_collection = database["sessions"]
 connection_requests_collection = database["connection_requests"]
-permissions_collection = database["permissions"]
+sessions_collection = database["sessions"]
+chat_messages_collection = database["chat_messages"]
+file_transfers_collection = database["file_transfers"]
+translation_history_collection = database["translation_history"]
+desktop_agents_collection = database["desktop_agents"]
+
 
 async def check_connection():
     try:
         await client.admin.command("ping")
-        print("✅ MongoDB connected successfully")
+        print("MongoDB connected successfully")
     except Exception as e:
-        print("❌ MongoDB connection failed:", e)
+        print(f"MongoDB connection failed: {e}")
+        raise

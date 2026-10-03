@@ -9,16 +9,28 @@ VALID_FEATURES = {
     "mouse",
     "keyboard",
     "file_transfer",
-    "translation",
+    "translation"
 }
 
 
 class PermissionRequest(BaseModel):
-    session_id: str = Field(min_length=1)
-    feature: str = Field(min_length=1)
+    session_id: str = Field(
+        ...,
+        min_length=1
+    )
+    feature: str = Field(
+        ...,
+        min_length=1
+    )
 
 
 class PermissionResponse(BaseModel):
-    session_id: str = Field(min_length=1)
-    feature: str = Field(min_length=1)
+    session_id: str = Field(
+        ...,
+        min_length=1
+    )
+    feature: str = Field(
+        ...,
+        min_length=1
+    )
     approved: bool

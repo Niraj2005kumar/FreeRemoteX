@@ -1,12 +1,14 @@
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, Field
+
 
 class ChatMessageCreate(BaseModel):
-    session_id: str
-    message: str
-
-class ChatMessageOut(BaseModel):
-    session_id: str
-    from_remote_id: str
-    message: str
-    timestamp: datetime
+    session_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=100
+    )
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=5000
+    )

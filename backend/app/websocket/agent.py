@@ -1,9 +1,9 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from datetime import datetime, timezone
+from typing import Dict
 
 from app.database.mongodb import database
 from app.services.agent_service import authenticate_agent
-from app.websocket.connection_manager import manager
 
 
 router = APIRouter(
@@ -14,6 +14,78 @@ router = APIRouter(
 agents_collection = database[
     "desktop_agents"
 ]
+
+
+class AgentConnectionManager:
+
+    def __init__(self):
+        self.active_connections: Dict[str, WebSocket] = {}
+
+    async def connect(
+        self,
+        agent_id: str,
+        websocket: WebSocket
+    ):
+        await websocket.accept()
+
+        old_connection = self.active_connections.get(
+            agent_id
+        )
+
+        if old_connection:
+            try:
+                await old_connection.close(
+                    code=1000
+                )
+            except Exception:
+                pass
+
+        self.active_connections[
+            agent_id
+        ] = websocket
+
+    def disconnect(
+        self,
+        agent_id: str
+    ):
+        self.active_connections.pop(
+            agent_id,
+            None
+        )
+
+    def is_online(
+        self,
+        agent_id: str
+    ) -> bool:
+        return agent_id in self.active_connections
+
+    async def send_to_agent(
+        self,
+        agent_id: str,
+        message: dict
+    ) -> bool:
+
+        websocket = self.active_connections.get(
+            agent_id
+        )
+
+        if not websocket:
+            return False
+
+        try:
+            await websocket.send_json(
+                message
+            )
+            return True
+
+        except Exception:
+            self.disconnect(
+                agent_id
+            )
+            return False
+
+
+agent_manager = AgentConnectionManager()
 
 
 @router.websocket(
@@ -28,22 +100,50 @@ async def agent_websocket(
         "token"
     )
 
+    if not agent_token:
+        await websocket.close(
+            code=1008,
+            reason="Agent token is required"
+        )
+        return
+
     try:
+
         agent = await authenticate_agent(
             agent_id,
             agent_token
         )
 
     except Exception:
+
         await websocket.close(
-            code=1008
+            code=1008,
+            reason="Invalid agent credentials"
         )
         return
 
-    remote_id = agent["remote_id"]
+    if not agent:
 
-    await manager.connect(
-        remote_id,
+        await websocket.close(
+            code=1008,
+            reason="Invalid agent credentials"
+        )
+        return
+
+    remote_id = agent.get(
+        "remote_id"
+    )
+
+    if not remote_id:
+
+        await websocket.close(
+            code=1008,
+            reason="Agent owner not found"
+        )
+        return
+
+    await agent_manager.connect(
+        agent_id,
         websocket
     )
 
@@ -55,12 +155,20 @@ async def agent_websocket(
             "$set": {
                 "last_connected_at": datetime.now(
                     timezone.utc
-                )
+                ),
+                "status": "connected"
             }
         }
     )
 
     try:
+
+        await websocket.send_json({
+            "type": "agent_connected",
+            "agent_id": agent_id,
+            "remote_id": remote_id,
+            "status": "connected"
+        })
 
         while True:
 
@@ -72,9 +180,28 @@ async def agent_websocket(
 
             if message_type == "agent_status":
 
+                agent_status = data.get(
+                    "status",
+                    "connected"
+                )
+
+                await agents_collection.update_one(
+                    {
+                        "agent_id": agent_id
+                    },
+                    {
+                        "$set": {
+                            "agent_status": agent_status,
+                            "last_connected_at": datetime.now(
+                                timezone.utc
+                            )
+                        }
+                    }
+                )
+
                 await websocket.send_json({
                     "type": "agent_status",
-                    "status": "connected",
+                    "status": agent_status,
                     "agent_id": agent_id
                 })
 
@@ -82,9 +209,33 @@ async def agent_websocket(
 
             if message_type == "heartbeat":
 
+                await agents_collection.update_one(
+                    {
+                        "agent_id": agent_id
+                    },
+                    {
+                        "$set": {
+                            "last_connected_at": datetime.now(
+                                timezone.utc
+                            )
+                        }
+                    }
+                )
+
                 await websocket.send_json({
-                    "type": "heartbeat",
+                    "type": "heartbeat_ack",
+                    "agent_id": agent_id,
                     "status": "ok"
+                })
+
+                continue
+
+            if message_type == "command_result":
+
+                await websocket.send_json({
+                    "type": "command_result_ack",
+                    "agent_id": agent_id,
+                    "status": "received"
                 })
 
                 continue
@@ -96,12 +247,38 @@ async def agent_websocket(
 
     except WebSocketDisconnect:
 
-        manager.disconnect(
-            remote_id
+        agent_manager.disconnect(
+            agent_id
         )
 
-    except Exception:
+        await agents_collection.update_one(
+            {
+                "agent_id": agent_id
+            },
+            {
+                "$set": {
+                    "status": "registered"
+                }
+            }
+        )
 
-        manager.disconnect(
-            remote_id
+    except Exception as e:
+
+        print(
+            f"Agent WebSocket error: {e}"
+        )
+
+        agent_manager.disconnect(
+            agent_id
+        )
+
+        await agents_collection.update_one(
+            {
+                "agent_id": agent_id
+            },
+            {
+                "$set": {
+                    "status": "registered"
+                }
+            }
         )
