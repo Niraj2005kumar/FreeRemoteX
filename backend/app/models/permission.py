@@ -1,22 +1,24 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-# Har feature ka apna permission flag
-VALID_FEATURES = [
-    "video_call",
-    "voice_call",
+
+VALID_FEATURES = {
+    "video",
+    "voice",
     "chat",
-    "screen_share",
-    "mouse_control",
-    "keyboard_control",
+    "screen",
+    "mouse",
+    "keyboard",
     "file_transfer",
-    "translation"
-]
+    "translation",
+}
+
 
 class PermissionRequest(BaseModel):
-    session_id: str
-    feature: str  # video_call, voice_call, chat, screen_share, mouse_control, keyboard_control, file_transfer, translation
+    session_id: str = Field(min_length=1)
+    feature: str = Field(min_length=1)
+
 
 class PermissionResponse(BaseModel):
-    session_id: str
-    feature: str
-    approved: bool  # True = accept, False = reject
+    session_id: str = Field(min_length=1)
+    feature: str = Field(min_length=1)
+    approved: bool
