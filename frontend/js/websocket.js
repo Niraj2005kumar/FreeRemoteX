@@ -1,11 +1,3 @@
-const CONFIG = window.CONFIG || {
-  API_BASE_URL: 'https://freeremotex.onrender.com',
-  WS_BASE_URL: 'wss://freeremotex.onrender.com',
-  STORAGE_KEYS: {
-    ACTIVE_SESSION: 'remotex_active_session',
-  },
-};
-
 class WebSocketService {
   constructor() {
     this.ws = null;
