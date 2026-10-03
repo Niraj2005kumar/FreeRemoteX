@@ -134,7 +134,10 @@ async def request_permission(
 
         raise HTTPException(
             status_code=400,
-            detail=f"Permission for '{feature}' is already granted"
+            detail=(
+                f"Permission for "
+                f"'{feature}' is already granted"
+            )
         )
 
     permission_requests = session.get(
@@ -146,13 +149,17 @@ async def request_permission(
         feature
     )
 
-    if existing_request and existing_request.get(
-        "status"
-    ) == "pending":
+    if (
+        existing_request
+        and existing_request.get("status") == "pending"
+    ):
 
         raise HTTPException(
             status_code=400,
-            detail=f"Permission request for '{feature}' is already pending"
+            detail=(
+                f"Permission request for "
+                f"'{feature}' is already pending"
+            )
         )
 
     request_data = {
@@ -161,17 +168,31 @@ async def request_permission(
         "requested_from": other_remote_id
     }
 
-    await sessions_collection.update_one(
+    result = await sessions_collection.update_one(
         {
             "session_id": data.session_id,
-            "status": "active"
+            "status": "active",
+            f"permission_requests.{feature}.status": {
+                "$ne": "pending"
+            }
         },
         {
             "$set": {
-                f"permission_requests.{feature}": request_data
+                f"permission_requests.{feature}":
+                    request_data
             }
         }
     )
+
+    if result.modified_count == 0:
+
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Permission request for "
+                f"'{feature}' could not be created"
+            )
+        )
 
     await manager.send_to_user(
         other_remote_id,
@@ -184,7 +205,10 @@ async def request_permission(
     )
 
     return {
-        "message": f"Permission request for '{feature}' sent",
+        "message": (
+            f"Permission request for "
+            f"'{feature}' sent"
+        ),
         "session_id": data.session_id,
         "feature": feature,
         "status": "pending"
@@ -260,34 +284,68 @@ async def respond_permission(
         else "rejected"
     )
 
-    await sessions_collection.update_one(
+    result = await sessions_collection.update_one(
         {
             "session_id": data.session_id,
             "status": "active",
-            f"permission_requests.{feature}.status": "pending"
+            f"permission_requests.{feature}.status":
+                "pending"
         },
         {
             "$set": {
-                f"permissions.{feature}": approved,
+                f"permissions.{feature}":
+                    approved,
                 f"permission_requests.{feature}": {
                     "status": new_status,
                     "requested_by": requested_by,
-                    "requested_from": current_remote_id,
-                    "responded_by": current_remote_id
+                    "requested_from":
+                        current_remote_id,
+                    "responded_by":
+                        current_remote_id
                 }
             }
         }
     )
 
+    if result.modified_count == 0:
+
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Permission request was already "
+                "processed or session changed"
+            )
+        )
+
+    permission_message = {
+        "type": "permission_response",
+        "session_id": data.session_id,
+        "feature": feature,
+        "approved": approved,
+        "responded_by": current_remote_id
+    }
+
     await manager.send_to_user(
         requested_by,
-        {
-            "type": "permission_response",
-            "session_id": data.session_id,
-            "feature": feature,
-            "approved": approved,
-            "responded_by": current_remote_id
-        }
+        permission_message
+    )
+
+    update_message = {
+        "type": "permission_update",
+        "session_id": data.session_id,
+        "feature": feature,
+        "approved": approved,
+        "updated_by": current_remote_id
+    }
+
+    await manager.send_to_user(
+        requested_by,
+        update_message
+    )
+
+    await manager.send_to_user(
+        current_remote_id,
+        update_message
     )
 
     return {
@@ -330,7 +388,10 @@ async def revoke_permission(
 
         raise HTTPException(
             status_code=400,
-            detail=f"Permission for '{feature}' is not currently granted"
+            detail=(
+                f"Permission for '{feature}' "
+                f"is not currently granted"
+            )
         )
 
     other_remote_id = get_other_user_remote_id(
@@ -338,21 +399,34 @@ async def revoke_permission(
         current_remote_id
     )
 
-    await sessions_collection.update_one(
+    result = await sessions_collection.update_one(
         {
             "session_id": data.session_id,
-            "status": "active"
+            "status": "active",
+            f"permissions.{feature}": True
         },
         {
             "$set": {
-                f"permissions.{feature}": False,
+                f"permissions.{feature}":
+                    False,
                 f"permission_requests.{feature}": {
                     "status": "revoked",
-                    "revoked_by": current_remote_id
+                    "revoked_by":
+                        current_remote_id
                 }
             }
         }
     )
+
+    if result.modified_count == 0:
+
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Permission for '{feature}' "
+                f"was already revoked"
+            )
+        )
 
     revoke_message = {
         "type": "permission_revoked",
@@ -371,8 +445,28 @@ async def revoke_permission(
         revoke_message
     )
 
+    permission_update_message = {
+        "type": "permission_update",
+        "session_id": data.session_id,
+        "feature": feature,
+        "approved": False,
+        "updated_by": current_remote_id
+    }
+
+    await manager.send_to_user(
+        other_remote_id,
+        permission_update_message
+    )
+
+    await manager.send_to_user(
+        current_remote_id,
+        permission_update_message
+    )
+
     return {
-        "message": f"Permission for '{feature}' revoked",
+        "message": (
+            f"Permission for '{feature}' revoked"
+        ),
         "session_id": data.session_id,
         "feature": feature,
         "approved": False,
@@ -380,7 +474,9 @@ async def revoke_permission(
     }
 
 
-@router.get("/status/{session_id}")
+@router.get(
+    "/status/{session_id}"
+)
 async def get_permission_status(
     session_id: str,
     current_user: dict = Depends(

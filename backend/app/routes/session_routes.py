@@ -74,85 +74,13 @@ async def create_session(
     )
 ):
 
-    current_remote_id = current_user[
-        "remote_id"
-    ]
-
-    if data.user_b_remote_id == current_remote_id:
-
-        raise HTTPException(
-            status_code=400,
-            detail="You cannot create a session with yourself"
+    raise HTTPException(
+        status_code=403,
+        detail=(
+            "Direct session creation is disabled. "
+            "Use the connection request and acceptance flow."
         )
-
-    existing_session = await sessions_collection.find_one({
-        "$or": [
-            {
-                "user_a_remote_id": current_remote_id,
-                "user_b_remote_id": data.user_b_remote_id,
-                "status": "active"
-            },
-            {
-                "user_a_remote_id": data.user_b_remote_id,
-                "user_b_remote_id": current_remote_id,
-                "status": "active"
-            }
-        ]
-    })
-
-    if existing_session:
-
-        raise HTTPException(
-            status_code=400,
-            detail="Active session already exists"
-        )
-
-    import uuid
-
-    session_id = (
-        "SES-" +
-        uuid.uuid4().hex[:12].upper()
     )
-
-    created_at = datetime.now(
-        timezone.utc
-    )
-
-    session_doc = {
-        "session_id": session_id,
-        "user_a_remote_id": current_remote_id,
-        "user_b_remote_id": data.user_b_remote_id,
-        "status": "active",
-        "permissions": DEFAULT_PERMISSIONS.copy(),
-        "permission_requests": {},
-        "created_at": created_at,
-        "ended_at": None
-    }
-
-    await sessions_collection.insert_one(
-        session_doc
-    )
-
-    await manager.send_to_user(
-        data.user_b_remote_id,
-        {
-            "type": "session_created",
-            "session_id": session_id,
-            "user_a_remote_id": current_remote_id,
-            "user_b_remote_id": data.user_b_remote_id,
-            "status": "active",
-            "permissions": DEFAULT_PERMISSIONS.copy()
-        }
-    )
-
-    return {
-        "session_id": session_id,
-        "user_a_remote_id": current_remote_id,
-        "user_b_remote_id": data.user_b_remote_id,
-        "status": "active",
-        "permissions": DEFAULT_PERMISSIONS.copy(),
-        "created_at": created_at
-    }
 
 
 @router.get(
@@ -192,15 +120,15 @@ async def get_session(
         )
 
     return {
-        "session_id": session[
+        "session_id": session.get(
             "session_id"
-        ],
-        "user_a_remote_id": session[
+        ),
+        "user_a_remote_id": session.get(
             "user_a_remote_id"
-        ],
-        "user_b_remote_id": session[
+        ),
+        "user_b_remote_id": session.get(
             "user_b_remote_id"
-        ],
+        ),
         "status": session.get(
             "status"
         ),
@@ -228,10 +156,12 @@ async def get_my_sessions(
     cursor = sessions_collection.find({
         "$or": [
             {
-                "user_a_remote_id": current_remote_id
+                "user_a_remote_id":
+                current_remote_id
             },
             {
-                "user_b_remote_id": current_remote_id
+                "user_b_remote_id":
+                current_remote_id
             }
         ]
     }).sort(
@@ -331,7 +261,8 @@ async def end_session(
             "$set": {
                 "status": "ended",
                 "ended_at": ended_at,
-                "permissions": DEFAULT_PERMISSIONS.copy(),
+                "permissions":
+                    DEFAULT_PERMISSIONS.copy(),
                 "permission_requests": {}
             }
         }
@@ -347,8 +278,10 @@ async def end_session(
         "session_id": session_id,
         "ended_by": current_remote_id,
         "status": "ended",
-        "permissions": DEFAULT_PERMISSIONS.copy(),
-        "ended_at": ended_at.isoformat()
+        "permissions":
+            DEFAULT_PERMISSIONS.copy(),
+        "ended_at":
+            ended_at.isoformat()
     }
 
     await manager.send_to_user(

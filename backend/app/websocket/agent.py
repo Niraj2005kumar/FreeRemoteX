@@ -7,19 +7,14 @@ from app.database.mongodb import (
     sessions_collection
 )
 
-from app.services.agent_service import (
-    authenticate_agent
-)
+from app.services.agent_service import authenticate_agent
 
 
 router = APIRouter(
     tags=["Desktop Agent WebSocket"]
 )
 
-
-agents_collection = database[
-    "desktop_agents"
-]
+agents_collection = database["desktop_agents"]
 
 
 class AgentConnectionManager:
@@ -35,6 +30,7 @@ class AgentConnectionManager:
         agent_id: str,
         websocket: WebSocket
     ):
+
         await websocket.accept()
 
         old_connection = self.active_connections.get(
@@ -42,6 +38,7 @@ class AgentConnectionManager:
         )
 
         if old_connection:
+
             try:
                 await old_connection.close(
                     code=1000
@@ -61,7 +58,9 @@ class AgentConnectionManager:
         self,
         agent_id: str
     ):
+
         if agent_id in self.active_connections:
+
             del self.active_connections[
                 agent_id
             ]
@@ -91,6 +90,7 @@ class AgentConnectionManager:
             return False
 
         try:
+
             await websocket.send_json(
                 message
             )
@@ -111,6 +111,57 @@ class AgentConnectionManager:
 
 
 agent_manager = AgentConnectionManager()
+
+
+async def validate_control_command(
+    session_id: str,
+    remote_id: str,
+    feature: str
+):
+
+    if feature not in {
+        "mouse",
+        "keyboard"
+    }:
+
+        return False, "Invalid control feature"
+
+    session = await sessions_collection.find_one({
+        "session_id": session_id
+    })
+
+    if not session:
+
+        return False, "Session not found"
+
+    if session.get(
+        "status"
+    ) != "active":
+
+        return False, "Session is not active"
+
+    if remote_id not in {
+        session.get("user_a_remote_id"),
+        session.get("user_b_remote_id")
+    }:
+
+        return False, "Agent is not part of this session"
+
+    permissions = session.get(
+        "permissions",
+        {}
+    )
+
+    if permissions.get(
+        feature
+    ) is not True:
+
+        return False, (
+            f"Permission for '{feature}' "
+            f"is not approved"
+        )
+
+    return True, session
 
 
 @router.websocket(
@@ -183,10 +234,10 @@ async def agent_websocket(
         },
         {
             "$set": {
-                "last_connected_at": datetime.now(
-                    timezone.utc
-                ),
-                "status": "connected"
+                "last_connected_at":
+                    datetime.now(timezone.utc),
+                "status":
+                    "connected"
             }
         }
     )
@@ -221,10 +272,12 @@ async def agent_websocket(
                     },
                     {
                         "$set": {
-                            "agent_status": agent_status,
-                            "last_connected_at": datetime.now(
-                                timezone.utc
-                            )
+                            "agent_status":
+                                agent_status,
+                            "last_connected_at":
+                                datetime.now(
+                                    timezone.utc
+                                )
                         }
                     }
                 )
@@ -245,9 +298,10 @@ async def agent_websocket(
                     },
                     {
                         "$set": {
-                            "last_connected_at": datetime.now(
-                                timezone.utc
-                            )
+                            "last_connected_at":
+                                datetime.now(
+                                    timezone.utc
+                                )
                         }
                     }
                 )
@@ -284,7 +338,8 @@ async def agent_websocket(
 
                     await websocket.send_json({
                         "type": "error",
-                        "message": "session_id is required"
+                        "message":
+                            "session_id is required"
                     })
 
                     continue
@@ -297,7 +352,8 @@ async def agent_websocket(
 
                     await websocket.send_json({
                         "type": "error",
-                        "message": "Session not found"
+                        "message":
+                            "Session not found"
                     })
 
                     continue
@@ -308,7 +364,8 @@ async def agent_websocket(
 
                     await websocket.send_json({
                         "type": "error",
-                        "message": "Session is not active"
+                        "message":
+                            "Session is not active"
                     })
 
                     continue
@@ -324,7 +381,8 @@ async def agent_websocket(
 
                     await websocket.send_json({
                         "type": "error",
-                        "message": "Agent is not part of this session"
+                        "message":
+                            "Agent is not part of this session"
                     })
 
                     continue
@@ -349,9 +407,10 @@ async def agent_websocket(
                     "message": message,
                     "agent_id": agent_id,
                     "remote_id": remote_id,
-                    "timestamp": datetime.now(
-                        timezone.utc
-                    ).isoformat()
+                    "timestamp":
+                        datetime.now(
+                            timezone.utc
+                        ).isoformat()
                 }
 
                 from app.websocket.connection_manager import manager
@@ -362,18 +421,96 @@ async def agent_websocket(
                 )
 
                 await websocket.send_json({
-                    "type": "command_result_ack",
-                    "session_id": session_id,
-                    "feature": feature,
-                    "success": success,
-                    "forwarded": sent
+                    "type":
+                        "command_result_ack",
+                    "session_id":
+                        session_id,
+                    "feature":
+                        feature,
+                    "success":
+                        success,
+                    "forwarded":
+                        sent
+                })
+
+                continue
+
+            if message_type == "remote_control":
+
+                session_id = data.get(
+                    "session_id"
+                )
+
+                feature = data.get(
+                    "feature"
+                )
+
+                command = data.get(
+                    "command",
+                    {}
+                )
+
+                if not session_id:
+
+                    await websocket.send_json({
+                        "type": "error",
+                        "message":
+                            "session_id is required"
+                    })
+
+                    continue
+
+                if feature not in {
+                    "mouse",
+                    "keyboard"
+                }:
+
+                    await websocket.send_json({
+                        "type": "error",
+                        "message":
+                            "Invalid control feature"
+                    })
+
+                    continue
+
+                valid, result = await validate_control_command(
+                    session_id=session_id,
+                    remote_id=remote_id,
+                    feature=feature
+                )
+
+                if not valid:
+
+                    await websocket.send_json({
+                        "type":
+                            "permission_denied",
+                        "session_id":
+                            session_id,
+                        "feature":
+                            feature,
+                        "message":
+                            result
+                    })
+
+                    continue
+
+                await websocket.send_json({
+                    "type":
+                        "remote_control_ack",
+                    "session_id":
+                        session_id,
+                    "feature":
+                        feature,
+                    "status":
+                        "permission_valid"
                 })
 
                 continue
 
             await websocket.send_json({
                 "type": "error",
-                "message": "Unknown agent message"
+                "message":
+                    "Unknown agent message"
             })
 
     except WebSocketDisconnect:
