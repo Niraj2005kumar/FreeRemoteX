@@ -1,7 +1,10 @@
 const CONFIG = {
   API_BASE_URL: 'https://freeremotex.onrender.com',
+  WS_BASE_URL: 'wss://freeremotex.onrender.com',
+  STORAGE_KEYS: {
+    ACTIVE_SESSION: 'remotex_active_session',
+  },
 };
-
 const API = {
   async request(endpoint, options = {}) {
     const url = `${CONFIG.API_BASE_URL}${endpoint}`;
