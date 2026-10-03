@@ -8,3 +8,4 @@ websockets
 pydantic
 httpx
 python-multipart
+email-validator
