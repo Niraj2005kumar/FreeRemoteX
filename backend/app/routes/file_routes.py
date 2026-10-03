@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from datetime import datetime, timezone
+from pathlib import Path
 import uuid
 import os
 
@@ -16,10 +18,11 @@ router = APIRouter(
 
 file_collection = database["file_transfers"]
 
-UPLOAD_DIR = "uploads"
+BASE_DIR = Path(__file__).resolve().parents[2]
+UPLOAD_DIR = BASE_DIR / "uploads"
 
-os.makedirs(
-    UPLOAD_DIR,
+UPLOAD_DIR.mkdir(
+    parents=True,
     exist_ok=True
 )
 
@@ -31,7 +34,6 @@ def validate_session(
     session: dict,
     current_remote_id: str
 ):
-
     if not session:
         raise HTTPException(
             status_code=404,
@@ -54,15 +56,24 @@ def validate_session(
         )
 
 
+def validate_file_permission(session: dict):
+    if session.get(
+        "permissions",
+        {}
+    ).get("file_transfer") is not True:
+        raise HTTPException(
+            status_code=403,
+            detail="File transfer permission not granted"
+        )
+
+
 def get_other_user_remote_id(
     session: dict,
     current_remote_id: str
 ):
-
     if session.get(
         "user_a_remote_id"
     ) == current_remote_id:
-
         return session.get(
             "user_b_remote_id"
         )
@@ -70,7 +81,6 @@ def get_other_user_remote_id(
     if session.get(
         "user_b_remote_id"
     ) == current_remote_id:
-
         return session.get(
             "user_a_remote_id"
         )
@@ -81,16 +91,25 @@ def get_other_user_remote_id(
     )
 
 
+def get_safe_filename(filename: str) -> str:
+    filename = os.path.basename(filename)
+
+    if not filename:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file name"
+        )
+
+    return filename
+
+
 @router.post("/upload")
 async def upload_file(
     session_id: str,
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-
-    current_remote_id = current_user[
-        "remote_id"
-    ]
+    current_remote_id = current_user["remote_id"]
 
     session = await sessions_collection.find_one({
         "session_id": session_id
@@ -101,15 +120,7 @@ async def upload_file(
         current_remote_id
     )
 
-    if session.get(
-        "permissions",
-        {}
-    ).get("file_transfer") is not True:
-
-        raise HTTPException(
-            status_code=403,
-            detail="File transfer permission not granted"
-        )
+    validate_file_permission(session)
 
     if not file.filename:
         raise HTTPException(
@@ -117,32 +128,25 @@ async def upload_file(
             detail="File name is required"
         )
 
-    file_id = str(
-        uuid.uuid4()
+    original_filename = get_safe_filename(
+        file.filename
     )
 
-    original_filename = file.filename
+    file_id = str(uuid.uuid4())
 
-    safe_filename = (
-        f"{file_id}_{original_filename}"
-    )
+    stored_filename = f"{file_id}_{original_filename}"
 
-    file_path = os.path.join(
-        UPLOAD_DIR,
-        safe_filename
-    )
+    file_path = UPLOAD_DIR / stored_filename
 
     total_size = 0
 
     try:
-
         with open(
             file_path,
             "wb"
         ) as buffer:
 
             while True:
-
                 chunk = await file.read(
                     1024 * 1024
                 )
@@ -153,16 +157,6 @@ async def upload_file(
                 total_size += len(chunk)
 
                 if total_size > MAX_FILE_SIZE:
-
-                    buffer.close()
-
-                    if os.path.exists(
-                        file_path
-                    ):
-                        os.remove(
-                            file_path
-                        )
-
                     raise HTTPException(
                         status_code=413,
                         detail="File size exceeds 100 MB limit"
@@ -171,25 +165,30 @@ async def upload_file(
                 buffer.write(chunk)
 
     except HTTPException:
+        if file_path.exists():
+            file_path.unlink()
+
         raise
 
     except Exception as e:
-
-        if os.path.exists(
-            file_path
-        ):
-            os.remove(
-                file_path
-            )
+        if file_path.exists():
+            file_path.unlink()
 
         raise HTTPException(
             status_code=500,
             detail=f"File upload failed: {str(e)}"
         )
 
+    finally:
+        await file.close()
+
     other_remote_id = get_other_user_remote_id(
         session,
         current_remote_id
+    )
+
+    created_at = datetime.now(
+        timezone.utc
     )
 
     file_doc = {
@@ -198,14 +197,12 @@ async def upload_file(
         "from_remote_id": current_remote_id,
         "to_remote_id": other_remote_id,
         "filename": original_filename,
-        "stored_filename": safe_filename,
-        "content_type": file.content_type,
+        "stored_filename": stored_filename,
+        "content_type": file.content_type or "application/octet-stream",
         "size": total_size,
-        "path": file_path,
+        "path": str(file_path),
         "status": "uploaded",
-        "created_at": datetime.now(
-            timezone.utc
-        )
+        "created_at": created_at
     }
 
     await file_collection.insert_one(
@@ -220,11 +217,9 @@ async def upload_file(
             "file_id": file_id,
             "from_remote_id": current_remote_id,
             "filename": original_filename,
-            "content_type": file.content_type,
+            "content_type": file.content_type or "application/octet-stream",
             "size": total_size,
-            "created_at": file_doc[
-                "created_at"
-            ].isoformat()
+            "created_at": created_at.isoformat()
         }
     )
 
@@ -242,10 +237,7 @@ async def list_files(
     session_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-
-    current_remote_id = current_user[
-        "remote_id"
-    ]
+    current_remote_id = current_user["remote_id"]
 
     session = await sessions_collection.find_one({
         "session_id": session_id
@@ -255,6 +247,8 @@ async def list_files(
         session,
         current_remote_id
     )
+
+    validate_file_permission(session)
 
     files = []
 
@@ -266,36 +260,19 @@ async def list_files(
     )
 
     async for file_doc in cursor:
-
         files.append({
-            "file_id": file_doc.get(
-                "file_id"
-            ),
-            "filename": file_doc.get(
-                "filename"
-            ),
-            "content_type": file_doc.get(
-                "content_type"
-            ),
-            "size": file_doc.get(
-                "size"
-            ),
-            "from_remote_id": file_doc.get(
-                "from_remote_id"
-            ),
-            "to_remote_id": file_doc.get(
-                "to_remote_id"
-            ),
-            "status": file_doc.get(
-                "status"
-            ),
-            "created_at": file_doc.get(
-                "created_at"
-            ).isoformat()
-            if file_doc.get(
-                "created_at"
+            "file_id": file_doc.get("file_id"),
+            "filename": file_doc.get("filename"),
+            "content_type": file_doc.get("content_type"),
+            "size": file_doc.get("size"),
+            "from_remote_id": file_doc.get("from_remote_id"),
+            "to_remote_id": file_doc.get("to_remote_id"),
+            "status": file_doc.get("status"),
+            "created_at": (
+                file_doc.get("created_at").isoformat()
+                if file_doc.get("created_at")
+                else None
             )
-            else None
         })
 
     return {
@@ -304,15 +281,12 @@ async def list_files(
     }
 
 
-@router.get("/{file_id}")
-async def get_file_info(
+@router.get("/download/{file_id}")
+async def download_file(
     file_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-
-    current_remote_id = current_user[
-        "remote_id"
-    ]
+    current_remote_id = current_user["remote_id"]
 
     file_doc = await file_collection.find_one({
         "file_id": file_id
@@ -333,38 +307,88 @@ async def get_file_info(
             detail="You do not have access to this file"
         )
 
-    return {
-        "file_id": file_doc.get(
-            "file_id"
-        ),
-        "session_id": file_doc.get(
-            "session_id"
-        ),
-        "filename": file_doc.get(
-            "filename"
-        ),
-        "content_type": file_doc.get(
-            "content_type"
-        ),
-        "size": file_doc.get(
-            "size"
-        ),
-        "from_remote_id": file_doc.get(
-            "from_remote_id"
-        ),
-        "to_remote_id": file_doc.get(
-            "to_remote_id"
-        ),
-        "status": file_doc.get(
-            "status"
-        ),
-        "created_at": file_doc.get(
-            "created_at"
-        ).isoformat()
-        if file_doc.get(
-            "created_at"
+    session = await sessions_collection.find_one({
+        "session_id": file_doc.get("session_id")
+    })
+
+    validate_session(
+        session,
+        current_remote_id
+    )
+
+    validate_file_permission(session)
+
+    file_path = Path(
+        file_doc.get("path", "")
+    )
+
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Physical file not found"
         )
-        else None
+
+    return FileResponse(
+        path=str(file_path),
+        filename=file_doc.get("filename"),
+        media_type=file_doc.get(
+            "content_type",
+            "application/octet-stream"
+        )
+    )
+
+
+@router.get("/{file_id}")
+async def get_file_info(
+    file_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    current_remote_id = current_user["remote_id"]
+
+    file_doc = await file_collection.find_one({
+        "file_id": file_id
+    })
+
+    if not file_doc:
+        raise HTTPException(
+            status_code=404,
+            detail="File not found"
+        )
+
+    if current_remote_id not in {
+        file_doc.get("from_remote_id"),
+        file_doc.get("to_remote_id")
+    }:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have access to this file"
+        )
+
+    session = await sessions_collection.find_one({
+        "session_id": file_doc.get("session_id")
+    })
+
+    validate_session(
+        session,
+        current_remote_id
+    )
+
+    validate_file_permission(session)
+
+    return {
+        "file_id": file_doc.get("file_id"),
+        "session_id": file_doc.get("session_id"),
+        "filename": file_doc.get("filename"),
+        "content_type": file_doc.get("content_type"),
+        "size": file_doc.get("size"),
+        "from_remote_id": file_doc.get("from_remote_id"),
+        "to_remote_id": file_doc.get("to_remote_id"),
+        "status": file_doc.get("status"),
+        "created_at": (
+            file_doc.get("created_at").isoformat()
+            if file_doc.get("created_at")
+            else None
+        )
     }
 
 
@@ -373,10 +397,7 @@ async def delete_file(
     file_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-
-    current_remote_id = current_user[
-        "remote_id"
-    ]
+    current_remote_id = current_user["remote_id"]
 
     file_doc = await file_collection.find_one({
         "file_id": file_id
@@ -397,20 +418,35 @@ async def delete_file(
             detail="You do not have access to this file"
         )
 
-    file_path = file_doc.get(
-        "path"
+    session = await sessions_collection.find_one({
+        "session_id": file_doc.get("session_id")
+    })
+
+    validate_session(
+        session,
+        current_remote_id
     )
 
-    if file_path and os.path.exists(
-        file_path
-    ):
-        os.remove(
-            file_path
-        )
+    validate_file_permission(session)
+
+    file_path = file_doc.get("path")
+
+    if file_path and os.path.exists(file_path):
+        os.remove(file_path)
 
     await file_collection.delete_one({
         "file_id": file_id
     })
+
+    await manager.send_to_user(
+        file_doc.get("to_remote_id"),
+        {
+            "type": "file_deleted",
+            "session_id": file_doc.get("session_id"),
+            "file_id": file_id,
+            "deleted_by": current_remote_id
+        }
+    )
 
     return {
         "message": "File deleted successfully",
