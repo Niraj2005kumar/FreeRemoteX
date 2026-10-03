@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Profile - RemoteX</title>
+  <meta name="description" content="View your RemoteX operator credentials, remote ID, and session records.">
+  <link rel="icon" type="image/svg+xml" href="assets/logo/remotex-mark.svg">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/profile.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar">
+      <div class="sidebar-header">
+        <a href="dashboard.html" class="sidebar-brand">
+          <img src="assets/logo/remotex-logo.svg" alt="RemoteX">
+        </a>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="sidebar-section-title">Workspace</div>
+        <a href="dashboard.html" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </a>
+        <a href="requests.html" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7.5" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          Requests
+        </a>
+        <a href="session.html" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Active Session
+        </a>
+
+        <div class="sidebar-section-title">Account</div>
+        <a href="profile.html" class="nav-link active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Profile
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button type="button" class="btn btn-ghost btn-sm" id="sidebar-logout-btn" style="width:100%; justify-content:flex-start; color:var(--text-muted);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <header class="app-header">
+        <div class="header-left">
+          <button class="mobile-menu-btn" id="mobile-sidebar-toggle" aria-label="Toggle navigation menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <h1 class="page-title">Operator Profile</h1>
+        </div>
+
+        <div class="header-right">
+          <div class="connection-status-pill">
+            <span class="status-dot online ws-status-dot"></span>
+            <span class="ws-status-text">Real-time Online</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-body">
+        <div class="profile-layout">
+          <!-- Left: User Identity Card -->
+          <div class="profile-sidebar-card">
+            <div class="profile-avatar-large" id="profile-avatar">--</div>
+            <h2 class="profile-display-name" id="profile-name">Loading...</h2>
+            <div class="profile-display-email" id="profile-email">•••••@••••.com</div>
+
+            <div class="profile-badge-pill">
+              <span class="status-dot online"></span>
+              Verified Operator
+            </div>
+
+            <div style="width: 100%; margin-bottom: 1.5rem;">
+              <div style="font-size: 0.75rem; color: var(--text-muted); text-align: left; margin-bottom: 0.35rem;">
+                YOUR REMOTE ID
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; background: var(--bg-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.5rem 0.75rem;">
+                <span id="profile-remote-id" style="font-family: var(--font-mono); font-weight: 600; color: #FFFFFF;">RX-•••••</span>
+                <button type="button" class="btn btn-ghost btn-sm" id="profile-copy-id-btn" style="margin-left: auto; padding: 0.2rem 0.4rem;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="profile-meta-rows">
+              <div class="profile-meta-row">
+                <span class="profile-meta-label">Protocol Version</span>
+                <span class="profile-meta-value">RemoteX v1.0.0</span>
+              </div>
+              <div class="profile-meta-row">
+                <span class="profile-meta-label">Permission Policy</span>
+                <span class="profile-meta-value" style="color: var(--success);">Zero-Default</span>
+              </div>
+              <div class="profile-meta-row">
+                <span class="profile-meta-label">Signaling</span>
+                <span class="profile-meta-value" style="color: var(--accent-secondary);">WebSocket</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Details & Session History Stack -->
+          <div class="profile-main-stack">
+            <!-- Account & Security Info Card -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Authentication & Security
+                </h3>
+              </div>
+              <div class="card-body">
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+                  Your connection is authenticated via cryptographically signed JSON Web Tokens (JWT). All peer sessions and remote feature approvals are validated on the backend.
+                </p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                  <div style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">SESSION CREDENTIALS</div>
+                    <div style="font-size: 0.875rem; font-weight: 600; color: var(--text-primary);">JWT Bearer Token</div>
+                    <div style="font-size: 0.75rem; color: var(--success); margin-top: 0.25rem;">● Active & Valid</div>
+                  </div>
+
+                  <div style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem;">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">REMOTE PEER ACCESS</div>
+                    <div style="font-size: 0.875rem; font-weight: 600; color: var(--text-primary);">Restricted & Governed</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Explicit grant required</div>
+                  </div>
+                </div>
+
+                <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+                  <button type="button" class="btn btn-danger-outline btn-sm" id="logout-main-btn">
+                    Terminate Session & Sign Out
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Historical Sessions List -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                  My Sessions History
+                </h3>
+                <button type="button" class="btn btn-ghost btn-sm" id="refresh-history-btn">Refresh</button>
+              </div>
+              <div class="card-body">
+                <div id="profile-sessions-list" class="list-group">
+                  <div class="skeleton" style="height: 60px; border-radius: var(--radius-md);"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/websocket.js"></script>
+  <script src="js/profile.js"></script>
+</body>
+</html>

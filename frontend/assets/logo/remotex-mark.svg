@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">
+  <defs>
+    <linearGradient id="rx-grad-mark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6C63FF" />
+      <stop offset="100%" stop-color="#00C2FF" />
+    </linearGradient>
+    <linearGradient id="rx-shield-mark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6C63FF" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#00C2FF" stop-opacity="0.05" />
+    </linearGradient>
+  </defs>
+  <path d="M18 2L4 7.6V17.5C4 25.8 9.9 33.3 18 35.5C26.1 33.3 32 25.8 32 17.5V7.6L18 2Z" fill="url(#rx-shield-mark)" stroke="url(#rx-grad-mark)" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M12 12L24 24M24 12L12 24" stroke="#F8FAFC" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="12" cy="12" r="2.2" fill="#00C2FF"/>
+  <circle cx="24" cy="12" r="2.2" fill="#6C63FF"/>
+  <circle cx="12" cy="24" r="2.2" fill="#6C63FF"/>
+  <circle cx="24" cy="24" r="2.2" fill="#00C2FF"/>
+  <circle cx="18" cy="18" r="3" fill="#F8FAFC"/>
+</svg>

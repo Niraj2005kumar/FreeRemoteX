@@ -1,187 +1,258 @@
-const API_BASE = 'http://localhost:8000';
-const token = localStorage.getItem('token');
-const myName = localStorage.getItem('name');
-const myRemoteId = localStorage.getItem('remote_id');
+/**
+ * RemoteX - Central WebSocket Service & Event Dispatcher
+ * Maintains a single, resilient WebSocket connection to FastAPI backend
+ */
 
-// Agar login nahi hai to wapas bhejo
-if (!token) {
-  window.location.href = 'index.html';
-}
-
-document.getElementById('userName').textContent = myName;
-document.getElementById('myRemoteId').textContent = myRemoteId;
-
-// Logout
-document.getElementById('logoutBtn').addEventListener('click', () => {
-  localStorage.clear();
-  window.location.href = 'index.html';
-});
-
-// --- WebSocket connect karo ---
-connectWebSocket(myRemoteId, handleIncomingMessage);
-
-function handleIncomingMessage(data) {
-  console.log('📩 Incoming:', data);
-
-  if (data.type === 'connection_request') {
-    showIncomingPopup(data);
+class WebSocketService {
+  constructor() {
+    this.ws = null;
+    this.listeners = new Map();
+    this.reconnectTimer = null;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 10;
+    this.baseReconnectDelay = 1500;
+    this.isConnected = false;
+    this.currentRemoteId = null;
+    this.isExplicitlyClosed = false;
   }
 
-  if (data.type === 'connection_response') {
-    alert(`Your connection request was ${data.status}`);
-    loadSessionHistory();
-  }
-
-  if (data.type === 'session_created') {
-    alert('Session started! Redirecting...');
-    window.location.href = `session.html?session_id=${data.session_id}`;
-  }
-}
-
-// --- Connect button ---
-document.getElementById('connectBtn').addEventListener('click', async () => {
-  const targetId = document.getElementById('targetRemoteId').value.trim();
-  const messageEl = document.getElementById('connectMessage');
-
-  if (!targetId) {
-    messageEl.style.color = 'red';
-    messageEl.textContent = 'Please enter a Remote ID';
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/connection/request`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ target_remote_id: targetId }),
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      messageEl.style.color = 'green';
-      messageEl.textContent =
-        'Connection request sent! Waiting for response...';
-    } else {
-      messageEl.style.color = 'red';
-      messageEl.textContent = data.detail || 'Failed to send request';
+  /**
+   * Register an event listener
+   * @param {string} event - Event name (e.g. 'connection_request', 'chat_message')
+   * @param {Function} callback - Callback function
+   */
+  on(event, callback) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
     }
-  } catch (err) {
-    messageEl.style.color = 'red';
-    messageEl.textContent = 'Server error';
+    this.listeners.get(event).add(callback);
   }
-});
 
-// --- Pending requests load karo ---
-async function loadPendingRequests() {
-  try {
-    const res = await fetch(`${API_BASE}/connection/pending`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
+  /**
+   * Unregister an event listener
+   * @param {string} event
+   * @param {Function} callback
+   */
+  off(event, callback) {
+    if (this.listeners.has(event)) {
+      this.listeners.get(event).delete(callback);
+    }
+  }
 
-    const listEl = document.getElementById('pendingRequestsList');
+  /**
+   * Dispatch an event to all subscribed callbacks
+   * @param {string} event
+   * @param {any} data
+   */
+  dispatch(event, data) {
+    if (this.listeners.has(event)) {
+      this.listeners.get(event).forEach(cb => {
+        try {
+          cb(data);
+        } catch (err) {
+          console.error(`Error in WebSocket listener for '${event}':`, err);
+        }
+      });
+    }
 
-    if (data.pending_requests.length === 0) {
-      listEl.innerHTML = `<p class="empty-text">No pending requests</p>`;
+    // Also dispatch to a wildcard listener if any
+    if (this.listeners.has('*')) {
+      this.listeners.get('*').forEach(cb => {
+        try {
+          cb({ event, data });
+        } catch (err) {
+          console.error(`Error in wildcard WebSocket listener:`, err);
+        }
+      });
+    }
+  }
+
+  /**
+   * Initialize or reuse WebSocket connection for current user
+   */
+  connect() {
+    const token = auth.getToken();
+    const user = auth.getUser();
+
+    if (!token || !user || !user.remote_id) {
+      console.warn('Cannot connect WebSocket: Missing token or user Remote ID');
       return;
     }
 
-    listEl.innerHTML = '';
-    data.pending_requests.forEach((req) => {
-      const item = document.createElement('div');
-      item.className = 'request-item';
-      item.innerHTML = `
-        <span>${req.from_name} (${req.from_remote_id})</span>
-        <div class="actions">
-          <button class="accept-btn" onclick="respondToRequest('${req.request_id}', true)">Accept</button>
-          <button class="reject-btn" onclick="respondToRequest('${req.request_id}', false)">Reject</button>
-        </div>
-      `;
-      listEl.appendChild(item);
-    });
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-// --- Request ko accept/reject karo ---
-async function respondToRequest(requestId, accept) {
-  try {
-    const res = await fetch(
-      `${API_BASE}/connection/respond/${requestId}?accept=${accept}`,
-      {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    const data = await res.json();
-
-    if (res.ok && accept) {
-      window.location.href = `session.html?session_id=${data.session_id}`;
-    } else {
-      loadPendingRequests();
+    // If already connected for this remote_id, do not reconnect
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+      if (this.currentRemoteId === user.remote_id) {
+        return;
+      }
+      this.disconnect();
     }
-  } catch (err) {
-    console.error(err);
+
+    this.isExplicitlyClosed = false;
+    this.currentRemoteId = user.remote_id;
+
+    const wsUrl = `${CONFIG.WS_BASE_URL}/ws/signaling/${encodeURIComponent(user.remote_id)}?token=${encodeURIComponent(token)}`;
+
+    this.dispatch('status_change', { status: 'connecting' });
+    this.updateGlobalConnectionIndicator('connecting');
+
+    try {
+      this.ws = new WebSocket(wsUrl);
+
+      this.ws.onopen = () => {
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
+        console.log(`[WebSocket] Connected successfully as ${user.remote_id}`);
+        this.dispatch('status_change', { status: 'connected' });
+        this.updateGlobalConnectionIndicator('connected');
+      };
+
+      this.ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          const type = payload.type || 'message';
+
+          // Central internal logging
+          // console.debug('[WebSocket Event]', type, payload);
+
+          // Dispatch specific typed event
+          this.dispatch(type, payload);
+
+          // Handle global notification toasts for incoming events if not already on the specific view
+          this.handleGlobalNotifications(type, payload);
+        } catch (parseErr) {
+          console.error('[WebSocket] Failed to parse message JSON:', parseErr, event.data);
+        }
+      };
+
+      this.ws.onerror = (err) => {
+        console.error('[WebSocket Error]:', err);
+        this.dispatch('status_change', { status: 'error', error: err });
+      };
+
+      this.ws.onclose = (event) => {
+        this.isConnected = false;
+        console.warn(`[WebSocket] Connection closed (code: ${event.code})`);
+        this.dispatch('status_change', { status: 'disconnected', code: event.code });
+        this.updateGlobalConnectionIndicator('disconnected');
+
+        if (!this.isExplicitlyClosed && auth.isAuthenticated()) {
+          this.scheduleReconnect();
+        }
+      };
+    } catch (err) {
+      console.error('[WebSocket Connection Failed]:', err);
+      this.scheduleReconnect();
+    }
   }
-}
 
-// --- Incoming popup dikhana (real-time WebSocket se) ---
-function showIncomingPopup(data) {
-  const popup = document.getElementById('incomingPopup');
-  const popupText = document.getElementById('popupText');
-
-  popupText.textContent = `${data.from_name} wants to connect with you`;
-  popup.classList.remove('hidden');
-
-  document.getElementById('popupAccept').onclick = () => {
-    respondToRequest(data.request_id, true);
-    popup.classList.add('hidden');
-  };
-
-  document.getElementById('popupReject').onclick = () => {
-    respondToRequest(data.request_id, false);
-    popup.classList.add('hidden');
-  };
-}
-
-// --- Session history load karo ---
-async function loadSessionHistory() {
-  try {
-    const res = await fetch(`${API_BASE}/session/history`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-
-    const listEl = document.getElementById('sessionHistoryList');
-
-    if (data.sessions.length === 0) {
-      listEl.innerHTML = `<p class="empty-text">No sessions yet</p>`;
+  /**
+   * Schedule exponential backoff reconnect
+   */
+  scheduleReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.warn('[WebSocket] Maximum reconnection attempts reached.');
+      this.updateGlobalConnectionIndicator('failed');
       return;
     }
 
-    listEl.innerHTML = '';
-    data.sessions.forEach((session) => {
-      const item = document.createElement('div');
-      item.className = 'request-item';
-      item.innerHTML = `
-        <span>With: ${session.with_remote_id} (${session.status})</span>
-        <button onclick="window.location.href='session.html?session_id=${session.session_id}'">Open</button>
-      `;
-      listEl.appendChild(item);
+    clearTimeout(this.reconnectTimer);
+    const delay = Math.min(this.baseReconnectDelay * Math.pow(1.5, this.reconnectAttempts), 20000);
+    this.reconnectAttempts++;
+
+    console.log(`[WebSocket] Reconnecting in ${Math.round(delay / 1000)}s (attempt ${this.reconnectAttempts})...`);
+    this.reconnectTimer = setTimeout(() => {
+      this.connect();
+    }, delay);
+  }
+
+  /**
+   * Send JSON message to backend WebSocket endpoint
+   * @param {Object} data
+   * @returns {boolean}
+   */
+  send(data) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(data));
+      return true;
+    } else {
+      console.warn('[WebSocket] Cannot send message: socket not open', data);
+      return false;
+    }
+  }
+
+  /**
+   * Disconnect and cancel re-connections
+   */
+  disconnect() {
+    this.isExplicitlyClosed = true;
+    clearTimeout(this.reconnectTimer);
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch (e) {}
+      this.ws = null;
+    }
+    this.isConnected = false;
+    this.updateGlobalConnectionIndicator('disconnected');
+  }
+
+  /**
+   * Updates any status indicator present in the DOM (e.g. top header status dot)
+   */
+  updateGlobalConnectionIndicator(status) {
+    const dots = document.querySelectorAll('.ws-status-dot');
+    const textEls = document.querySelectorAll('.ws-status-text');
+
+    dots.forEach(dot => {
+      dot.className = 'status-dot ws-status-dot ' + (
+        status === 'connected' ? 'online' :
+        status === 'connecting' ? 'connecting' : 'offline'
+      );
     });
-  } catch (err) {
-    console.error(err);
+
+    textEls.forEach(el => {
+      el.textContent = (
+        status === 'connected' ? 'Real-time Online' :
+        status === 'connecting' ? 'Connecting...' : 'Reconnecting...'
+      );
+    });
+  }
+
+  /**
+   * Handle intelligent global toasts for background events
+   */
+  handleGlobalNotifications(type, data) {
+    if (typeof UI === 'undefined') return;
+
+    if (type === 'connection_request') {
+      const from = data.from_name ? `${data.from_name} (${data.from_remote_id})` : data.from_remote_id;
+      UI.showToast(`Incoming connection request from ${from}`, 'info', 'Connection Request');
+      // If we are on dashboard or requests, trigger a refresh event
+      this.dispatch('incoming_request_received', data);
+    } else if (type === 'connection_response') {
+      if (data.status === 'accepted') {
+        UI.showToast(`User ${data.responder_remote_id} accepted your connection request!`, 'success', 'Connection Accepted');
+      } else {
+        UI.showToast(`User ${data.responder_remote_id} rejected your connection request.`, 'warning', 'Connection Rejected');
+      }
+    } else if (type === 'session_created') {
+      UI.showToast(`Active session established: ${data.session_id}`, 'success', 'Session Started');
+      // If not already on session.html, user might want to join
+      if (!window.location.pathname.endsWith('session.html')) {
+        localStorage.setItem(CONFIG.STORAGE_KEYS.ACTIVE_SESSION, data.session_id);
+      }
+    } else if (type === 'session_ended') {
+      UI.showToast(`Session ${data.session_id} has ended`, 'info', 'Session Ended');
+    }
   }
 }
 
-// Initial load
-loadPendingRequests();
-loadSessionHistory();
+// Global singleton instance
+window.websocketService = new WebSocketService();
 
-// Har 5 second mein pending requests refresh karo (backup, WebSocket ke sath)
-setInterval(loadPendingRequests, 5000);
+// Automatically connect if user is already authenticated
+document.addEventListener('DOMContentLoaded', () => {
+  if (auth.isAuthenticated()) {
+    window.websocketService.connect();
+  }
+});

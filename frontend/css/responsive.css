@@ -1,0 +1,218 @@
+/* ==========================================================================
+   RemoteX - Responsive Breakpoints
+   Desktop: 1440px+, 1280px, 1024px | Tablet: 768px | Mobile: 480px, 375px
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Desktop Refinements (1280px - 1440px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1280px) {
+  .session-workspace {
+    grid-template-columns: 1fr 340px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Small Desktop / Laptop (1024px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-width: 220px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .session-workspace {
+    grid-template-columns: 1fr 320px !important;
+  }
+
+  .page-body {
+    padding: 1.25rem 1.5rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Tablet (768px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: -260px;
+    width: 260px;
+    z-index: 1050;
+    transition: transform var(--transition-smooth);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .app-sidebar.open {
+    transform: translateX(260px);
+  }
+
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 11, 18, 0.7);
+    backdrop-filter: blur(2px);
+    z-index: 1040;
+  }
+
+  .sidebar-backdrop.active {
+    display: block;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex !important;
+  }
+
+  .session-workspace {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    overflow-y: auto !important;
+  }
+
+  .session-main-col {
+    min-height: 380px;
+  }
+
+  .session-side-col {
+    width: 100% !important;
+  }
+
+  .requests-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .page-body {
+    padding: 1rem;
+  }
+
+  /* Responsive Tables to Cards */
+  .table-responsive table,
+  .table-responsive thead,
+  .table-responsive tbody,
+  .table-responsive th,
+  .table-responsive td,
+  .table-responsive tr {
+    display: block;
+  }
+
+  .table-responsive thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  .table-responsive tr {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    margin-bottom: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .table-responsive td {
+    border: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+    font-size: 0.875rem;
+  }
+
+  .table-responsive td::before {
+    content: attr(data-label);
+    font-weight: 500;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Mobile (480px and down)
+   -------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  html {
+    font-size: 15px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.75rem;
+  }
+
+  .page-header .page-actions {
+    width: 100%;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .page-header .page-actions .btn {
+    flex: 1;
+  }
+
+  .auth-card {
+    padding: 1.5rem 1.25rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .auth-title {
+    font-size: 1.3rem;
+  }
+
+  /* Compact Session Header & Controls */
+  .session-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem !important;
+  }
+
+  .session-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .session-tools-tabs {
+    overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chat-panel {
+    height: 380px !important;
+  }
+
+  .permissions-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #toast-container {
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+    bottom: 1rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Small Mobile (375px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 375px) {
+  html {
+    font-size: 14px;
+  }
+
+  .btn {
+    padding: 0.55rem 0.75rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+}

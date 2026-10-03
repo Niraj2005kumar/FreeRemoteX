@@ -1,0 +1,182 @@
+/* ==========================================================================
+   RemoteX - Base Styles & Design Tokens
+   Permission-Based Remote Support and Communication Platform
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Color Palette */
+  --bg-primary: #080B12;
+  --bg-secondary: #0F141D;
+  --bg-card: #121923;
+  --bg-card-hover: #16202D;
+  --bg-elevated: #182230;
+
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-focus: rgba(108, 99, 255, 0.5);
+
+  --accent-primary: #6C63FF;
+  --accent-primary-hover: #5A52E0;
+  --accent-primary-subtle: rgba(108, 99, 255, 0.12);
+
+  --accent-secondary: #00C2FF;
+  --accent-secondary-hover: #00AEE6;
+  --accent-secondary-subtle: rgba(0, 194, 255, 0.12);
+
+  --success: #22C55E;
+  --success-subtle: rgba(34, 197, 94, 0.12);
+  --danger: #EF4444;
+  --danger-hover: #DC2626;
+  --danger-subtle: rgba(239, 68, 68, 0.12);
+  --warning: #F59E0B;
+  --warning-subtle: rgba(245, 158, 11, 0.12);
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-inverse: #080B12;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows (restrained, modern) */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 24px -4px rgba(108, 99, 255, 0.25);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Spacing / Sizes */
+  --sidebar-width: 250px;
+  --header-height: 64px;
+}
+
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Typography Hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; }
+h5 { font-size: 0.95rem; }
+
+p {
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+}
+
+a {
+  color: var(--accent-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: #38d3ff;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Selection */
+::selection {
+  background: var(--accent-primary-subtle);
+  color: var(--text-primary);
+}
+
+/* Layout Utilities */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background-color: var(--bg-primary);
+}
+
+.page-body {
+  flex: 1;
+  padding: 1.75rem 2rem;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

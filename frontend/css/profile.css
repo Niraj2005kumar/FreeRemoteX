@@ -1,0 +1,100 @@
+/* ==========================================================================
+   RemoteX - Profile Page
+   ========================================================================== */
+
+.profile-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 1.5rem;
+}
+
+.profile-sidebar-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.profile-avatar-large {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: #FFFFFF;
+  font-size: 1.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.25);
+}
+
+.profile-display-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.profile-display-email {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.25rem;
+}
+
+.profile-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  background: var(--accent-secondary-subtle);
+  color: var(--accent-secondary);
+  border: 1px solid rgba(0, 194, 255, 0.2);
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-full);
+  margin-bottom: 1.5rem;
+}
+
+.profile-meta-rows {
+  width: 100%;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  text-align: left;
+}
+
+.profile-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8125rem;
+}
+
+.profile-meta-label {
+  color: var(--text-muted);
+}
+
+.profile-meta-value {
+  color: var(--text-primary);
+  font-weight: 500;
+  font-family: var(--font-mono);
+}
+
+.profile-main-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+}

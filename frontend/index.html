@@ -1,48 +1,546 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RemoteX - Login</title>
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RemoteX - Permission-Based Remote Support & Communication Platform</title>
+  <meta name="description" content="RemoteX is a permission-first remote desktop support and communication platform with granular feature approvals, WebRTC streaming, and real-time translation.">
+  <link rel="icon" type="image/svg+xml" href="assets/logo/remotex-mark.svg">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <style>
+    /* Landing page specific styling */
+    .landing-header {
+      border-bottom: 1px solid var(--border-subtle);
+      background-color: rgba(8, 11, 18, 0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .landing-nav {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .landing-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .landing-logo img {
+      height: 32px;
+      width: auto;
+    }
+    .landing-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      list-style: none;
+    }
+    .landing-links a {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .landing-links a:hover {
+      color: var(--text-primary);
+    }
+    .landing-cta-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .hero-section {
+      padding: 6rem 1.5rem 4rem;
+      max-width: 1280px;
+      margin: 0 auto;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.85rem;
+      background: var(--accent-primary-subtle);
+      border: 1px solid rgba(108, 99, 255, 0.3);
+      border-radius: var(--radius-full);
+      color: #9D96FF;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      margin-bottom: 1.5rem;
+    }
+    .hero-title {
+      font-size: 3.25rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      max-width: 860px;
+      margin-bottom: 1.25rem;
+    }
+    .hero-title span {
+      background: linear-gradient(135deg, #F8FAFC 30%, #94A3B8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-title .accent-text {
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      max-width: 680px;
+      line-height: 1.6;
+      margin-bottom: 2.25rem;
+    }
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 3.5rem;
+    }
+    .hero-preview {
+      width: 100%;
+      max-width: 1040px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      text-align: left;
+    }
+    .preview-header {
+      background: var(--bg-secondary);
+      padding: 0.875rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .window-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .window-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .preview-body {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      min-height: 380px;
+    }
+    .preview-screen {
+      background: #05070B;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      border-right: 1px solid var(--border-subtle);
+    }
+    .preview-sidebar {
+      background: var(--bg-card);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .preview-perm-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0.75rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+    }
+    .features-section {
+      padding: 5rem 1.5rem;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    .section-header {
+      text-align: center;
+      margin-bottom: 3.5rem;
+    }
+    .section-header h2 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      transition: all var(--transition-normal);
+    }
+    .feature-card:hover {
+      border-color: rgba(255, 255, 255, 0.14);
+      transform: translateY(-2px);
+    }
+    .feature-icon-wrapper {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      background: var(--accent-primary-subtle);
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.25rem;
+    }
+    .feature-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+    .security-section {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 5rem 1.5rem;
+    }
+    .security-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3.5rem;
+      align-items: center;
+    }
+    .security-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .sec-step {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    .sec-step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-full);
+      background: var(--accent-secondary-subtle);
+      color: var(--accent-secondary);
+      font-weight: 700;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 2.5rem 1.5rem;
+      background: var(--bg-primary);
+    }
+    .footer-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+    }
+    @media (max-width: 900px) {
+      .hero-title { font-size: 2.25rem; }
+      .features-grid { grid-template-columns: 1fr; }
+      .preview-body { grid-template-columns: 1fr; }
+      .security-inner { grid-template-columns: 1fr; gap: 2rem; }
+      .landing-links { display: none; }
+    }
+  </style>
 </head>
-
 <body>
+  <!-- Navigation Header -->
+  <header class="landing-header">
+    <nav class="landing-nav">
+      <a href="index.html" class="landing-logo">
+        <img src="assets/logo/remotex-logo.svg" alt="RemoteX">
+      </a>
+      <ul class="landing-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#security">Zero Trust Architecture</a></li>
+        <li><a href="#communication">Communication</a></li>
+      </ul>
+      <div class="landing-cta-group" id="nav-cta-container">
+        <a href="login.html" class="btn btn-secondary btn-sm" id="nav-login-btn">Sign In</a>
+        <a href="register.html" class="btn btn-primary btn-sm" id="nav-register-btn">Create Account</a>
+      </div>
+    </nav>
+  </header>
 
-    <div class="auth-container">
-        <h1>RemoteX</h1>
-        <p class="tagline">Connect with permission. Communicate with approval.</p>
+  <!-- Hero Section -->
+  <main>
+    <section class="hero-section">
+      <div class="hero-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Zero-Assumption Permission Architecture
+      </div>
+      <h1 class="hero-title">
+        <span>Permission-Based</span><br>
+        <span class="accent-text">Remote Support & Communication</span>
+      </h1>
+      <p class="hero-subtitle">
+        Connecting to a remote device never grants blanket access. In RemoteX, every capability — screen viewing, mouse, keyboard, chat, voice, video, files, and translation — requires separate, real-time participant consent.
+      </p>
+      <div class="hero-actions" id="hero-cta-container">
+        <a href="register.html" class="btn btn-primary btn-lg">
+          Get Started with RemoteX
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <a href="login.html" class="btn btn-secondary btn-lg">Sign In to Dashboard</a>
+      </div>
 
-        <div class="tabs">
-            <button id="loginTab" class="tab-btn active">Login</button>
-            <button id="signupTab" class="tab-btn">Sign Up</button>
+      <!-- Live Interactive Visual Representation -->
+      <div class="hero-preview" aria-hidden="true">
+        <div class="preview-header">
+          <div class="window-dots">
+            <span class="window-dot" style="background:#EF4444;"></span>
+            <span class="window-dot" style="background:#F59E0B;"></span>
+            <span class="window-dot" style="background:#22C55E;"></span>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-secondary); font-family:var(--font-mono);">
+            SES-89B4C2A1 • Remote ID: RX-9042
+          </div>
+          <div class="badge badge-success">
+            <span class="status-dot online"></span> Active Session
+          </div>
+        </div>
+        <div class="preview-body">
+          <div class="preview-screen">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#6C63FF" stroke-width="1.5" style="margin-bottom:1rem; opacity:0.8;"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <div style="font-weight:600; color:var(--text-primary); margin-bottom:0.25rem;">Remote Workspace Ready</div>
+            <div style="font-size:0.8125rem; color:var(--text-muted); text-align:center; max-width:320px;">
+              Direct WebRTC streaming active. Remote control governed strictly by active permission state.
+            </div>
+          </div>
+          <div class="preview-sidebar">
+            <div style="font-size:0.8125rem; font-weight:600; color:var(--text-primary); text-transform:uppercase; letter-spacing:0.04em;">
+              Feature Permission Matrix
+            </div>
+            <div class="preview-perm-row">
+              <span>Screen Stream</span>
+              <span class="badge badge-success">Allowed</span>
+            </div>
+            <div class="preview-perm-row">
+              <span>Mouse Input</span>
+              <span class="badge badge-warning">Pending Approval</span>
+            </div>
+            <div class="preview-perm-row">
+              <span>Keyboard Input</span>
+              <span class="badge badge-neutral">Not Requested</span>
+            </div>
+            <div class="preview-perm-row">
+              <span>Encrypted Chat</span>
+              <span class="badge badge-success">Allowed</span>
+            </div>
+            <div class="preview-perm-row">
+              <span>File Transfer</span>
+              <span class="badge badge-danger">Revoked</span>
+            </div>
+            <div class="preview-perm-row">
+              <span>Live Translation</span>
+              <span class="badge badge-info">14 Languages</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section" id="features">
+      <div class="section-header">
+        <h2>Enterprise-Grade Capabilities</h2>
+        <p>Built from the ground up on modern Web standards with strict security primitives.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3 class="feature-title">Independent Permission Model</h3>
+          <p>Every session feature maintains its own state: Request, Pending, Allowed, Rejected, or Revoked. Connection approval never grants blanket machine access.</p>
         </div>
 
-        <!-- LOGIN FORM -->
-        <form id="loginForm" class="auth-form">
-            <input type="email" id="loginEmail" placeholder="Email" required>
-            <input type="password" id="loginPassword" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          </div>
+          <h3 class="feature-title">WebRTC Audio, Video & Screen</h3>
+          <p>Peer-to-peer real-time streaming using standard RTCPeerConnection and WebSocket signaling for minimal latency during support workflows.</p>
+        </div>
 
-        <!-- SIGNUP FORM -->
-        <form id="signupForm" class="auth-form hidden">
-            <input type="text" id="signupName" placeholder="Full Name" required>
-            <input type="email" id="signupEmail" placeholder="Email" required>
-            <input type="password" id="signupPassword" placeholder="Password" required>
-            <select id="signupLanguage">
-                <option value="English">English</option>
-                <option value="Hindi">Hindi</option>
-                <option value="Hinglish">Hinglish</option>
-            </select>
-            <button type="submit">Sign Up</button>
-        </form>
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h3 class="feature-title">Governed Chat & Communication</h3>
+          <p>Real-time encrypted text messaging inside sessions with audit history, participant alignment, and instant history clearing capabilities.</p>
+        </div>
 
-        <p id="message" class="message"></p>
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </div>
+          <h3 class="feature-title">Multi-Language Translation</h3>
+          <p>Built-in real-time translation across 14 Indian and regional languages (Hindi, Hinglish, Bengali, Tamil, Telugu, Marathi, Punjabi, etc.) to eliminate communication friction.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          </div>
+          <h3 class="feature-title">Permission-Gated File Transfer</h3>
+          <p>Upload and download artifacts up to 100 MB directly within the session context only when file transfer permission is explicitly active.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <h3 class="feature-title">Instant Permission Revocation</h3>
+          <p>Either participant can revoke any granted permission at any millisecond with one click. Input handlers immediately cease processing upon revocation.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Security Section -->
+    <section class="security-section" id="security">
+      <div class="security-inner">
+        <div>
+          <div class="badge badge-warning" style="margin-bottom:1rem;">
+            Security First
+          </div>
+          <h2 style="font-size:2rem; margin-bottom:1rem;">The RemoteX Principle: "No Permission = No Access"</h2>
+          <p style="margin-bottom:1.5rem; line-height:1.6;">
+            Traditional remote desktop tools hand over total device control once an ID and PIN are shared. RemoteX fundamentally flips this security model upside down.
+          </p>
+          <div class="security-steps">
+            <div class="sec-step">
+              <div class="sec-step-num">1</div>
+              <div>
+                <strong style="color:var(--text-primary); font-size:0.95rem;">Connection Request & Handshake</strong>
+                <p style="font-size:0.875rem;">Users exchange unique Remote IDs. Both parties must mutually accept before any session is initialized.</p>
+              </div>
+            </div>
+            <div class="sec-step">
+              <div class="sec-step-num">2</div>
+              <div>
+                <strong style="color:var(--text-primary); font-size:0.95rem;">Zero Default Permissions</strong>
+                <p style="font-size:0.875rem;">An established session starts with all eight feature permissions set to disabled. No assumptions are made.</p>
+              </div>
+            </div>
+            <div class="sec-step">
+              <div class="sec-step-num">3</div>
+              <div>
+                <strong style="color:var(--text-primary); font-size:0.95rem;">Real-Time Feature Grant & Revoke</strong>
+                <p style="font-size:0.875rem;">Features are requested individually and validated cryptographically on the FastAPI backend before actions execute.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="background:var(--bg-primary); border:1px solid var(--border-subtle); padding:2rem;">
+          <h3 style="font-size:1.15rem; margin-bottom:1rem; color:var(--text-primary); display:flex; align-items:center; gap:0.5rem;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Production Architecture
+          </h3>
+          <ul style="list-style:none; display:flex; flex-direction:column; gap:0.85rem; font-size:0.875rem; color:var(--text-secondary);">
+            <li style="display:flex; gap:0.5rem;">
+              <span style="color:var(--accent-secondary); font-weight:bold;">•</span>
+              FastAPI asynchronous backend with MongoDB persistence
+            </li>
+            <li style="display:flex; gap:0.5rem;">
+              <span style="color:var(--accent-secondary); font-weight:bold;">•</span>
+              Full duplex WebSocket event dispatching
+            </li>
+            <li style="display:flex; gap:0.5rem;">
+              <span style="color:var(--accent-secondary); font-weight:bold;">•</span>
+              WebRTC peer-to-peer data and media pipelines
+            </li>
+            <li style="display:flex; gap:0.5rem;">
+              <span style="color:var(--accent-secondary); font-weight:bold;">•</span>
+              JWT bearer token authentication on every API transaction
+            </li>
+            <li style="display:flex; gap:0.5rem;">
+              <span style="color:var(--accent-secondary); font-weight:bold;">•</span>
+              Zero third-party front-end tracking scripts or telemetry
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <img src="assets/logo/remotex-mark.svg" alt="RemoteX" style="height:22px;">
+        <span>© RemoteX Platform. Permission-governed remote communication.</span>
+      </div>
+      <div style="display:flex; gap:1.5rem;">
+        <a href="login.html">Sign In</a>
+        <a href="register.html">Register</a>
+        <a href="dashboard.html">Dashboard</a>
+      </div>
     </div>
+  </footer>
 
-    <script src="js/auth.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    // Adapt nav CTAs if user is already logged in
+    document.addEventListener('DOMContentLoaded', () => {
+      if (auth.isAuthenticated()) {
+        const user = auth.getUser();
+        const navContainer = document.getElementById('nav-cta-container');
+        const heroContainer = document.getElementById('hero-cta-container');
+
+        if (navContainer) {
+          navContainer.innerHTML = `
+            <a href="dashboard.html" class="btn btn-primary btn-sm">
+              Open Dashboard
+              <span class="status-dot online" style="margin-left:4px;"></span>
+            </a>
+          `;
+        }
+
+        if (heroContainer) {
+          heroContainer.innerHTML = `
+            <a href="dashboard.html" class="btn btn-primary btn-lg">
+              Go to Dashboard
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+            <a href="profile.html" class="btn btn-secondary btn-lg">View Profile</a>
+          `;
+        }
+      }
+    });
+  </script>
 </body>
-
 </html>

@@ -1,0 +1,614 @@
+/* ==========================================================================
+   RemoteX - Session Workspace Styles
+   ========================================================================== */
+
+.session-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--bg-primary);
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Session Header
+   -------------------------------------------------------------------------- */
+.session-header {
+  height: 60px;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.25rem;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.session-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.session-brand-mark {
+  height: 26px;
+  width: auto;
+}
+
+.session-peer-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.peer-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.peer-id-badge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  color: var(--accent-secondary);
+}
+
+.session-id-tag {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.session-id-tag:hover {
+  color: var(--text-secondary);
+}
+
+.session-header-center {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.session-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   Workspace Split (Left: Screen & Bottom Tools, Right: Permissions)
+   -------------------------------------------------------------------------- */
+.session-workspace {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+}
+
+.session-main-col {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-right: 1px solid var(--border-subtle);
+  overflow: hidden;
+  background-color: #04060A;
+}
+
+/* Remote Screen Area */
+.session-screen-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: #05070B;
+  min-height: 280px;
+}
+
+.remote-stream-video {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: none;
+}
+
+.remote-stream-video.active {
+  display: block;
+}
+
+.local-pip-video {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  width: 160px;
+  height: 90px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background-color: #000;
+  box-shadow: var(--shadow-lg);
+  object-fit: cover;
+  z-index: 20;
+  display: none;
+}
+
+.local-pip-video.active {
+  display: block;
+}
+
+/* Interactive Overlay Canvas for Remote Control */
+.remote-stream-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  cursor: default;
+  outline: none;
+}
+
+.remote-stream-canvas.capturing-active {
+  cursor: crosshair;
+  box-shadow: inset 0 0 0 2px var(--accent-secondary);
+}
+
+/* Screen Empty State */
+.screen-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  z-index: 5;
+}
+
+.screen-placeholder-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-primary);
+  margin-bottom: 1rem;
+}
+
+.screen-toolbar {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.screen-toolbar > * {
+  pointer-events: auto;
+}
+
+.screen-meta-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgba(8, 11, 18, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle);
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* --------------------------------------------------------------------------
+   Bottom Tools & Communication Panel
+   -------------------------------------------------------------------------- */
+.session-tools-panel {
+  height: 290px;
+  background-color: var(--bg-card);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.session-tools-header {
+  height: 44px;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  flex-shrink: 0;
+}
+
+.session-tools-tabs {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.tool-tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all var(--transition-fast);
+}
+
+.tool-tab-btn:hover {
+  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.tool-tab-btn.active {
+  color: var(--accent-secondary);
+  background-color: var(--accent-secondary-subtle);
+  font-weight: 600;
+}
+
+.session-tools-body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.tool-pane {
+  display: none;
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.tool-pane.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Permission Gate Overlay for Tools */
+.tool-permission-gate {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(18, 25, 35, 0.96);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem;
+  z-index: 50;
+}
+
+.tool-permission-gate h4 {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.tool-permission-gate p {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  max-width: 380px;
+  margin-bottom: 1rem;
+}
+
+/* Chat Styling */
+.chat-messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.chat-message {
+  display: flex;
+  width: 100%;
+}
+
+.chat-message.incoming {
+  justify-content: flex-start;
+}
+
+.chat-message.outgoing {
+  justify-content: flex-end;
+}
+
+.chat-bubble {
+  max-width: 75%;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.chat-message.incoming .chat-bubble {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-bottom-left-radius: 2px;
+}
+
+.chat-message.outgoing .chat-bubble {
+  background-color: var(--accent-primary);
+  color: #FFFFFF;
+  border-bottom-right-radius: 2px;
+}
+
+.chat-meta {
+  font-size: 0.6875rem;
+  margin-top: 0.25rem;
+  opacity: 0.75;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.chat-input-bar {
+  padding: 0.625rem 1rem;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* File Transfer Styling */
+.files-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  height: 100%;
+}
+
+.file-dropzone {
+  border-right: 1px solid var(--border-subtle);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--bg-secondary);
+  transition: all var(--transition-fast);
+}
+
+.file-dropzone.drag-active {
+  background-color: var(--accent-primary-subtle);
+  border-color: var(--accent-primary);
+}
+
+.files-list-container {
+  padding: 0.75rem 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.file-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.file-item-main {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.file-icon {
+  color: var(--accent-secondary);
+  flex-shrink: 0;
+}
+
+.file-name {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.file-meta {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Translation Styling */
+.translation-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: 100%;
+}
+
+.translation-controls {
+  padding: 1rem;
+  border-right: 1px solid var(--border-subtle);
+  background-color: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.translation-lang-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.translation-history {
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.translation-item-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+}
+
+.trans-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.trans-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+}
+
+.trans-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+/* --------------------------------------------------------------------------
+   Right Panel: Permissions Matrix
+   -------------------------------------------------------------------------- */
+.session-side-col {
+  width: 360px;
+  background-color: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.permissions-panel-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.permissions-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.permission-feature-row {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all var(--transition-fast);
+}
+
+.permission-feature-row.allowed {
+  border-color: rgba(34, 197, 94, 0.25);
+  background-color: rgba(34, 197, 94, 0.03);
+}
+
+.permission-feature-row.pending {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.perm-feature-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.perm-icon-wrapper {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.perm-feature-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.perm-feature-desc {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.perm-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.permissions-panel-footer {
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--bg-primary);
+}

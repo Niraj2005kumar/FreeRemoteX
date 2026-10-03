@@ -1,8 +1,15 @@
 import asyncio
 import json
-import sys
 
 import websockets
+
+from config import (
+    BACKEND_URL,
+    AGENT_ID,
+    AGENT_TOKEN,
+    HEARTBEAT_INTERVAL,
+    RECONNECT_DELAY
+)
 
 from control import (
     execute_mouse_command,
@@ -23,64 +30,83 @@ class RemoteXAgent:
         self.token = token
         self.websocket = None
         self.running = True
+        self.active_permissions = {}
 
     @property
     def websocket_url(self):
 
         return (
-            f"{self.server_url}/ws/agent/"
-            f"{self.agent_id}?token={self.token}"
+            f"{self.server_url}"
+            f"/ws/agent/{self.agent_id}"
+            f"?token={self.token}"
         )
 
     async def connect(self):
 
-        print(
-            "Connecting to RemoteX backend..."
-        )
+        while self.running:
 
-        try:
-
-            async with websockets.connect(
-                self.websocket_url,
-                ping_interval=20,
-                ping_timeout=20
-            ) as websocket:
-
-                self.websocket = websocket
+            try:
 
                 print(
-                    "RemoteX Desktop Agent connected."
+                    "Connecting to RemoteX backend..."
                 )
 
-                heartbeat_task = asyncio.create_task(
-                    self.heartbeat()
+                async with websockets.connect(
+                    self.websocket_url,
+                    ping_interval=20,
+                    ping_timeout=20
+                ) as websocket:
+
+                    self.websocket = websocket
+
+                    self.active_permissions = {}
+
+                    print(
+                        "RemoteX Desktop Agent connected."
+                    )
+
+                    heartbeat_task = asyncio.create_task(
+                        self.heartbeat()
+                    )
+
+                    try:
+
+                        while self.running:
+
+                            message = await websocket.recv()
+
+                            data = json.loads(
+                                message
+                            )
+
+                            await self.handle_message(
+                                data
+                            )
+
+                    finally:
+
+                        heartbeat_task.cancel()
+                        self.active_permissions = {}
+
+            except Exception as e:
+
+                print(
+                    f"Connection lost: {e}"
                 )
 
-                try:
+                self.websocket = None
+                self.active_permissions = {}
 
-                    while self.running:
+            if self.running:
 
-                        message = await websocket.recv()
+                print(
+                    f"Reconnecting in "
+                    f"{RECONNECT_DELAY} seconds..."
+                )
 
-                        data = json.loads(
-                            message
-                        )
-
-                        await self.handle_message(
-                            data
-                        )
-
-                finally:
-
-                    heartbeat_task.cancel()
-
-        except Exception as e:
-
-            print(
-                f"Agent connection error: {e}"
-            )
-
-            self.websocket = None
+                await asyncio.sleep(
+                    RECONNECT_DELAY
+                )
 
     async def heartbeat(self):
 
@@ -89,7 +115,7 @@ class RemoteXAgent:
             try:
 
                 await asyncio.sleep(
-                    15
+                    HEARTBEAT_INTERVAL
                 )
 
                 if self.websocket:
@@ -143,6 +169,65 @@ class RemoteXAgent:
 
             return
 
+        if message_type == "permission_update":
+
+            session_id = data.get(
+                "session_id"
+            )
+
+            feature = data.get(
+                "feature"
+            )
+
+            approved = bool(
+                data.get("approved")
+            )
+
+            if session_id and feature:
+
+                if session_id not in self.active_permissions:
+
+                    self.active_permissions[
+                        session_id
+                    ] = {}
+
+                self.active_permissions[
+                    session_id
+                ][feature] = approved
+
+            return
+
+        if message_type == "permission_revoked":
+
+            session_id = data.get(
+                "session_id"
+            )
+
+            feature = data.get(
+                "feature"
+            )
+
+            if session_id in self.active_permissions:
+
+                self.active_permissions[
+                    session_id
+                ][feature] = False
+
+            return
+
+        if message_type == "session_ended":
+
+            session_id = data.get(
+                "session_id"
+            )
+
+            self.active_permissions.pop(
+                session_id,
+                None
+            )
+
+            return
+
         if message_type == "remote_control":
 
             await self.handle_remote_control(
@@ -155,8 +240,25 @@ class RemoteXAgent:
 
             return
 
+        if message_type == "remote_control_ack":
+
+            return
+
         print(
             f"Received: {data}"
+        )
+
+    def has_permission(
+        self,
+        session_id: str,
+        feature: str
+    ) -> bool:
+
+        return (
+            self.active_permissions
+            .get(session_id, {})
+            .get(feature, False)
+            is True
         )
 
     async def handle_remote_control(
@@ -177,6 +279,38 @@ class RemoteXAgent:
             "session_id"
         )
 
+        if not session_id:
+
+            return
+
+        if feature not in {
+            "mouse",
+            "keyboard"
+        }:
+
+            await self.send_command_result(
+                session_id,
+                feature,
+                False,
+                "Unsupported control feature"
+            )
+
+            return
+
+        if not self.has_permission(
+            session_id,
+            feature
+        ):
+
+            await self.send_command_result(
+                session_id,
+                feature,
+                False,
+                f"Permission for '{feature}' is not approved"
+            )
+
+            return
+
         try:
 
             if feature == "mouse":
@@ -190,17 +324,6 @@ class RemoteXAgent:
                 execute_keyboard_command(
                     command
                 )
-
-            else:
-
-                await self.send_command_result(
-                    session_id,
-                    feature,
-                    False,
-                    "Unsupported control feature"
-                )
-
-                return
 
             await self.send_command_result(
                 session_id,
@@ -227,44 +350,53 @@ class RemoteXAgent:
     ):
 
         if not self.websocket:
+
             return
 
-        await self.websocket.send(
-            json.dumps({
-                "type": "command_result",
-                "session_id": session_id,
-                "feature": feature,
-                "success": success,
-                "message": message
-            })
-        )
+        try:
+
+            await self.websocket.send(
+                json.dumps({
+                    "type":
+                        "command_result",
+                    "session_id":
+                        session_id,
+                    "feature":
+                        feature,
+                    "success":
+                        success,
+                    "message":
+                        message
+                })
+            )
+
+        except Exception:
+
+            pass
 
 
 async def main():
 
-    if len(sys.argv) != 4:
+    if not AGENT_ID:
 
         print(
-            "Usage:"
-        )
-
-        print(
-            "python agent.py "
-            "<backend_url> "
-            "<agent_id> "
-            "<agent_token>"
+            "REMOTEX_AGENT_ID is missing in .env"
         )
 
         return
 
-    backend_url = sys.argv[1]
-    agent_id = sys.argv[2]
-    agent_token = sys.argv[3]
+    if not AGENT_TOKEN:
+
+        print(
+            "REMOTEX_AGENT_TOKEN is missing in .env"
+        )
+
+        return
 
     agent = RemoteXAgent(
-        backend_url,
-        agent_id,
-        agent_token
+        BACKEND_URL,
+        AGENT_ID,
+        AGENT_TOKEN
     )
 
     await agent.connect()
@@ -272,6 +404,14 @@ async def main():
 
 if __name__ == "__main__":
 
-    asyncio.run(
-        main()
-    )
+    try:
+
+        asyncio.run(
+            main()
+        )
+
+    except KeyboardInterrupt:
+
+        print(
+            "\nRemoteX Desktop Agent stopped."
+        )

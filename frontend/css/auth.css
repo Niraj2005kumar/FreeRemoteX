@@ -1,0 +1,124 @@
+/* ==========================================================================
+   RemoteX - Authentication Pages (login.html, register.html)
+   ========================================================================== */
+
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: radial-gradient(circle at 50% 0%, rgba(108, 99, 255, 0.08) 0%, transparent 60%),
+              var(--bg-primary);
+  position: relative;
+}
+
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.auth-brand-logo {
+  height: 42px;
+  width: auto;
+  margin-bottom: 0.75rem;
+}
+
+.auth-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--accent-secondary);
+  background-color: var(--accent-secondary-subtle);
+  border: 1px solid rgba(0, 194, 255, 0.2);
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.02em;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 2.25rem 2rem;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-primary), var(--accent-secondary), transparent);
+}
+
+.auth-header {
+  margin-bottom: 1.75rem;
+  text-align: center;
+}
+
+.auth-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.4rem;
+}
+
+.auth-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-card-footer {
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.auth-card-footer a {
+  color: var(--accent-secondary);
+  font-weight: 500;
+}
+
+.auth-security-notice {
+  margin-top: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.auth-security-notice svg {
+  color: var(--success);
+  flex-shrink: 0;
+}
+
+/* Remote ID input helper in register form */
+.remote-id-generator {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.remote-id-generator .form-control {
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}

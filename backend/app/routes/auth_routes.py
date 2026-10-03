@@ -6,7 +6,7 @@ from app.utils.security import (
     verify_password,
     create_access_token
 )
-from app.models.user_schema import (
+from app.schemas.user_schema import (
     UserRegister,
     UserLogin
 )
