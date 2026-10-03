@@ -1,1 +1,11 @@
--r backend/requirements.txt
+fastapi
+uvicorn
+motor
+python-jose
+passlib[bcrypt]
+python-dotenv
+websockets
+pydantic
+httpx
+python-multipart
+email-validator
