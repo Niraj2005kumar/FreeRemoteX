@@ -124,6 +124,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       remoteVideo.srcObject = stream;
       remoteVideo.classList.add('active');
       if (screenPlaceholder) screenPlaceholder.style.display = 'none';
+      remoteVideo.play().catch((error) => {
+        console.warn('[WebRTC] Remote video autoplay was blocked:', error);
+        UI.showToast('Remote media is connected. Click the video to start playback.', 'info', 'Playback Needs a Click');
+      });
 
       const tracks = stream.getVideoTracks();
       if (tracks.length > 0) {
@@ -154,7 +158,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (webrtcStatusText) {
       webrtcStatusText.textContent = `WebRTC: ${state}`;
     }
+
+    const activeFeature = webrtcService.activeFeature;
+    [
+      [toggleScreenBtn, 'screen'],
+      [toggleVideoBtn, 'video'],
+      [toggleVoiceBtn, 'voice'],
+    ].forEach(([button, feature]) => {
+      if (!button) return;
+      button.classList.toggle('btn-accent', activeFeature === feature);
+      button.classList.toggle('btn-secondary', activeFeature !== feature);
+    });
   };
+
+  if (remoteVideo) {
+    remoteVideo.addEventListener('click', () => {
+      remoteVideo.play().catch((error) => {
+        console.error('[WebRTC] Remote video playback failed:', error);
+        UI.showToast('Could not play the remote media stream. Check browser playback permissions.', 'error');
+      });
+    });
+  }
 
   // Wire Header Media Buttons
   if (toggleScreenBtn) {
@@ -210,7 +234,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Quick gate request handlers
   if (placeholderRequestScreenBtn) {
-    placeholderRequestScreenBtn.addEventListener('click', () => permissionsManager.request('screen'));
+    placeholderRequestScreenBtn.addEventListener('click', async () => {
+      if (permissionsManager.isAllowed('screen')) {
+        const success = await webrtcService.start('screen');
+        if (success && toggleScreenBtn) {
+          toggleScreenBtn.classList.remove('btn-secondary');
+          toggleScreenBtn.classList.add('btn-accent');
+        }
+        return;
+      }
+
+      const screenState = permissionsManager.getFeatureState('screen');
+      if (screenState === 'PENDING' || screenState === 'INCOMING_PENDING') {
+        UI.showToast('Screen permission is already pending. Wait for the other participant to respond.', 'info');
+        return;
+      }
+
+      try {
+        await permissionsManager.request('screen');
+      } catch (error) {
+        console.error('[WebRTC] Screen permission request failed:', error);
+      }
+    });
   }
   if (gateRequestChatBtn) {
     gateRequestChatBtn.addEventListener('click', () => permissionsManager.request('chat'));
@@ -381,6 +426,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Subscribe to permission changes to keep UI reactive
   permissionsManager.subscribe((states) => {
     renderPermissionsMatrix(states);
+
+    if (placeholderRequestScreenBtn) {
+      const screenState = states.screen?.state;
+      const isAllowed = states.screen?.allowed === true;
+      placeholderRequestScreenBtn.textContent = isAllowed
+        ? 'Start Screen Share'
+        : screenState === 'PENDING' || screenState === 'INCOMING_PENDING'
+          ? 'Screen Permission Pending'
+          : 'Request Screen Permission';
+      placeholderRequestScreenBtn.disabled =
+        screenState === 'PENDING' || screenState === 'INCOMING_PENDING';
+    }
+
+    if (
+      webrtcService.activeFeature &&
+      states[webrtcService.activeFeature]?.allowed !== true
+    ) {
+      webrtcService.stop();
+    }
   });
 
   if (refreshPermissionsBtn) {
