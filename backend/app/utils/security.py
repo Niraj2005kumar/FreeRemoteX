@@ -11,10 +11,15 @@ pwd_context = CryptContext(
     deprecated="auto"
 )
 
+BCRYPT_MAX_PASSWORD_BYTES = 72
+
 
 def hash_password(
     password: str
 ) -> str:
+    if len(password.encode("utf-8")) > BCRYPT_MAX_PASSWORD_BYTES:
+        raise ValueError("Password must not exceed 72 UTF-8 bytes")
+
     return pwd_context.hash(
         password
     )
