@@ -57,8 +57,8 @@ const API = {
 
       if (options.responseType === 'blob') {
         if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.detail || 'Download failed');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.detail || 'Download failed');
         }
 
         return await response.blob();
@@ -66,7 +66,7 @@ const API = {
 
       const contentType = response.headers.get('content-type');
 
-      let data = null;
+      let data;
 
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
@@ -75,12 +75,12 @@ const API = {
       }
 
       if (!response.ok) {
-        const errorMsg =
+        const errorMessage =
           data && data.detail
             ? data.detail
             : `Request failed with status ${response.status}`;
 
-        throw new Error(errorMsg);
+        throw new Error(errorMessage);
       }
 
       return data;
@@ -173,7 +173,7 @@ const API = {
       method: 'POST',
       body: JSON.stringify({
         session_id: sessionId,
-        feature: feature,
+        feature,
       }),
     });
   },
@@ -183,7 +183,7 @@ const API = {
       method: 'POST',
       body: JSON.stringify({
         session_id: sessionId,
-        feature: feature,
+        feature,
         approved: Boolean(approved),
       }),
     });
@@ -194,7 +194,7 @@ const API = {
       method: 'POST',
       body: JSON.stringify({
         session_id: sessionId,
-        feature: feature,
+        feature,
       }),
     });
   },
@@ -208,7 +208,7 @@ const API = {
       method: 'POST',
       body: JSON.stringify({
         session_id: sessionId,
-        message: message,
+        message,
       }),
     });
   },
@@ -264,7 +264,7 @@ const API = {
   async translate({ sessionId, text, sourceLanguage, targetLanguage }) {
     const params = new URLSearchParams({
       session_id: sessionId,
-      text: text,
+      text,
       source_language: sourceLanguage,
       target_language: targetLanguage,
     });
@@ -310,6 +310,7 @@ const API = {
 };
 
 const api = API;
+
 window.CONFIG = CONFIG;
 window.API = API;
 window.api = api;

@@ -39,7 +39,10 @@ class WebSocketService {
     if (this.listeners.has('*')) {
       this.listeners.get('*').forEach((callback) => {
         try {
-          callback({ event, data });
+          callback({
+            event,
+            data,
+          });
         } catch (error) {
           console.error('Error in wildcard WebSocket listener:', error);
         }
@@ -48,11 +51,21 @@ class WebSocketService {
   }
 
   connect() {
+    if (typeof CONFIG === 'undefined' || !CONFIG.WS_BASE_URL) {
+      console.error('[WebSocket] CONFIG.WS_BASE_URL is not available.');
+      return;
+    }
+
+    if (typeof auth === 'undefined' || !auth.getToken || !auth.getUser) {
+      console.error('[WebSocket] Auth service is not available.');
+      return;
+    }
+
     const token = auth.getToken();
     const user = auth.getUser();
 
     if (!token || !user || !user.remote_id) {
-      console.warn('Cannot connect WebSocket: Missing token or user Remote ID');
+      console.warn('[WebSocket] Missing token or user Remote ID.');
       return;
     }
 
@@ -89,7 +102,7 @@ class WebSocketService {
         this.isConnected = true;
         this.reconnectAttempts = 0;
 
-        console.log(`[WebSocket] Connected successfully as ${user.remote_id}`);
+        console.log(`[WebSocket] Connected as ${user.remote_id}`);
 
         this.dispatch('status_change', {
           status: 'connected',
@@ -101,21 +114,19 @@ class WebSocketService {
       this.ws.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data);
+
           const type = payload.type || 'message';
 
           this.dispatch(type, payload);
+
           this.handleGlobalNotifications(type, payload);
         } catch (error) {
-          console.error(
-            '[WebSocket] Failed to parse message JSON:',
-            error,
-            event.data,
-          );
+          console.error('[WebSocket] Failed to parse message:', error);
         }
       };
 
       this.ws.onerror = (error) => {
-        console.error('[WebSocket Error]:', error);
+        console.error('[WebSocket] Connection error:', error);
 
         this.dispatch('status_change', {
           status: 'error',
@@ -126,7 +137,7 @@ class WebSocketService {
       this.ws.onclose = (event) => {
         this.isConnected = false;
 
-        console.warn(`[WebSocket] Connection closed (code: ${event.code})`);
+        console.warn(`[WebSocket] Connection closed: ${event.code}`);
 
         this.dispatch('status_change', {
           status: 'disconnected',
@@ -135,12 +146,17 @@ class WebSocketService {
 
         this.updateGlobalConnectionIndicator('disconnected');
 
-        if (!this.isExplicitlyClosed && auth.isAuthenticated()) {
+        if (
+          !this.isExplicitlyClosed &&
+          typeof auth !== 'undefined' &&
+          auth.isAuthenticated &&
+          auth.isAuthenticated()
+        ) {
           this.scheduleReconnect();
         }
       };
     } catch (error) {
-      console.error('[WebSocket Connection Failed]:', error);
+      console.error('[WebSocket] Connection failed:', error);
 
       this.scheduleReconnect();
     }
@@ -148,9 +164,10 @@ class WebSocketService {
 
   scheduleReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.warn('[WebSocket] Maximum reconnection attempts reached.');
+      console.warn('[WebSocket] Maximum reconnect attempts reached.');
 
       this.updateGlobalConnectionIndicator('failed');
+
       return;
     }
 
@@ -163,11 +180,7 @@ class WebSocketService {
 
     this.reconnectAttempts++;
 
-    console.log(
-      `[WebSocket] Reconnecting in ${Math.round(
-        delay / 1000,
-      )}s (attempt ${this.reconnectAttempts})...`,
-    );
+    console.log(`[WebSocket] Reconnecting in ${Math.round(delay / 1000)}s`);
 
     this.reconnectTimer = setTimeout(() => {
       this.connect();
@@ -176,11 +189,18 @@ class WebSocketService {
 
   send(data) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(data));
-      return true;
+      try {
+        this.ws.send(JSON.stringify(data));
+
+        return true;
+      } catch (error) {
+        console.error('[WebSocket] Send failed:', error);
+
+        return false;
+      }
     }
 
-    console.warn('[WebSocket] Cannot send message: socket not open', data);
+    console.warn('[WebSocket] Socket is not open.');
 
     return false;
   }
@@ -194,13 +214,14 @@ class WebSocketService {
       try {
         this.ws.close();
       } catch (error) {
-        console.error('[WebSocket] Error while closing:', error);
+        console.error('[WebSocket] Close error:', error);
       }
 
       this.ws = null;
     }
 
     this.isConnected = false;
+
     this.updateGlobalConnectionIndicator('disconnected');
   }
 
@@ -288,7 +309,11 @@ class WebSocketService {
 window.websocketService = new WebSocketService();
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (auth.isAuthenticated()) {
+  if (
+    typeof auth !== 'undefined' &&
+    auth.isAuthenticated &&
+    auth.isAuthenticated()
+  ) {
     window.websocketService.connect();
   }
 });
