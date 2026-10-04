@@ -26,13 +26,25 @@ app = FastAPI(
 )
 
 
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://freeremotex-frontend.vercel.app",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
+
+
+
 
 
 app.include_router(
@@ -75,6 +87,9 @@ app.include_router(
     agent_routes.router
 )
 
+
+
+
 app.include_router(
     signaling.router
 )
@@ -84,9 +99,12 @@ app.include_router(
 )
 
 
+
+
 @app.on_event("startup")
 async def startup_event():
     await check_connection()
+
 
 
 @app.get("/")
@@ -96,6 +114,8 @@ async def root():
         "version": "1.0.0",
         "status": "online"
     }
+
+
 
 
 @app.get("/health")
