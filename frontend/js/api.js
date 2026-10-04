@@ -5,6 +5,7 @@ const CONFIG = {
     ACTIVE_SESSION: 'remotex_active_session',
   },
 };
+
 const API = {
   async request(endpoint, options = {}) {
     const url = `${CONFIG.API_BASE_URL}${endpoint}`;
@@ -308,5 +309,7 @@ const API = {
   },
 };
 
+const api = API;
 window.CONFIG = CONFIG;
 window.API = API;
+window.api = api;

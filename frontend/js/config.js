@@ -11,7 +11,7 @@ const CONFIG = {
     TOKEN: 'remotex_access_token',
     USER: 'remotex_user_data',
     ACTIVE_SESSION: 'remotex_active_session',
-    ACTIVE_TARGET: 'remotex_active_target'
+    ACTIVE_TARGET: 'remotex_active_target',
   },
 
   VALID_FEATURES: [
@@ -22,7 +22,7 @@ const CONFIG = {
     'mouse',
     'keyboard',
     'file_transfer',
-    'translation'
+    'translation',
   ],
 
   PERMISSION_STATES: {
@@ -30,7 +30,7 @@ const CONFIG = {
     PENDING: 'PENDING',
     ALLOWED: 'ALLOWED',
     REJECTED: 'REJECTED',
-    REVOKED: 'REVOKED'
+    REVOKED: 'REVOKED',
   },
 
   SUPPORTED_LANGUAGES: [
@@ -47,16 +47,17 @@ const CONFIG = {
     { code: 'pa', name: 'Punjabi' },
     { code: 'ur', name: 'Urdu' },
     { code: 'od', name: 'Odia' },
-    { code: 'santhali', name: 'Santhali' }
+    { code: 'santhali', name: 'Santhali' },
   ],
 
   RTC_CONFIG: {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' }
-    ]
-  }
+      { urls: 'stun:stun1.l.google.com:19302' },
+    ],
+  },
 };
 
 // Freeze to prevent accidental alterations
 Object.freeze(CONFIG);
+window.CONFIG = CONFIG;

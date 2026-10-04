@@ -1,7 +1,3 @@
-/**
- * RemoteX - Registration Controller
- */
-
 document.addEventListener('DOMContentLoaded', () => {
   if (auth.redirectIfAuthenticated()) {
     return;
@@ -20,7 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const emailError = document.getElementById('email-error');
   const remoteIdError = document.getElementById('remote-id-error');
   const passwordError = document.getElementById('password-error');
-  const confirmPasswordError = document.getElementById('confirm-password-error');
+  const confirmPasswordError = document.getElementById(
+    'confirm-password-error',
+  );
 
   // Helper to generate a standardized Remote ID
   function generateRandomRemoteId() {
@@ -43,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Password visibility togglers
-  document.querySelectorAll('.toggle-pw-btn').forEach(btn => {
+  document.querySelectorAll('.toggle-pw-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const targetId = btn.getAttribute('data-target');
       const targetInput = document.getElementById(targetId);
@@ -60,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { input: emailInput, error: emailError },
     { input: remoteIdInput, error: remoteIdError },
     { input: passwordInput, error: passwordError },
-    { input: confirmPasswordInput, error: confirmPasswordError }
+    { input: confirmPasswordInput, error: confirmPasswordError },
   ];
 
   fields.forEach(({ input, error }) => {
@@ -106,7 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
       isValid = false;
     } else if (!/^[A-Za-z0-9_-]{3,24}$/.test(remoteIdVal)) {
       remoteIdInput.classList.add('is-invalid');
-      remoteIdError.textContent = 'Remote ID must be 3-24 characters (letters, numbers, dash)';
+      remoteIdError.textContent =
+        'Remote ID must be 3-24 characters (letters, numbers, dash)';
       isValid = false;
     }
 
@@ -137,22 +136,26 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       UI.setButtonLoading(submitBtn, true, 'Creating account...');
 
-      await api.register({
+      await API.register({
         name: nameVal,
         email: emailVal,
         remote_id: remoteIdVal,
-        password: passwordVal
+        password: passwordVal,
       });
 
-      UI.showToast('Registration successful! Redirecting to login...', 'success', 'Account Created');
+      UI.showToast(
+        'Registration successful! Redirecting to login...',
+        'success',
+        'Account Created',
+      );
 
       setTimeout(() => {
         window.location.href = 'login.html';
       }, 1200);
-
     } catch (error) {
       console.error('Registration error:', error);
-      const message = error.message || 'Registration failed. Please check your information.';
+      const message =
+        error.message || 'Registration failed. Please check your information.';
       UI.showToast(message, 'error', 'Registration Error');
 
       if (message.toLowerCase().includes('email')) {
