@@ -3,9 +3,13 @@
  * Permission-based remote support and communication platform
  */
 
-const CONFIG = {
-  API_BASE_URL: 'http://127.0.0.1:8000',
-  WS_BASE_URL: 'ws://127.0.0.1:8000',
+window.CONFIG = {
+  API_BASE_URL: ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    ? 'http://127.0.0.1:8000'
+    : 'https://freeremotex.onrender.com',
+  WS_BASE_URL: ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    ? 'ws://127.0.0.1:8000'
+    : 'wss://freeremotex.onrender.com',
 
   STORAGE_KEYS: {
     TOKEN: 'remotex_access_token',
@@ -59,5 +63,4 @@ const CONFIG = {
 };
 
 // Freeze to prevent accidental alterations
-Object.freeze(CONFIG);
-window.CONFIG = CONFIG;
+Object.freeze(window.CONFIG);
